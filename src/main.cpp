@@ -13,6 +13,7 @@
 #include "ui/homescreen.h"
 #include "api/nysse.h"
 #include "sensors/bh1750_sensor.h"
+#include "sensors/inmp441_sensor.h"
 
 // Alustetaan näyttö (Määritelty display.h:ssa)
 LGFX gfx;
@@ -59,8 +60,9 @@ void setup() {
   initColors();
   gfx.fillScreen(C_BG);
 
-  // Käynnistetään valoanturi
+  // Käynnistetään anturit
   initLightSensor();
+  initMicrophone();
 
   // WiFi
   connectWiFi();
@@ -74,14 +76,22 @@ void setup() {
   Serial.println("Haetaan Nysse-dataa...");
   fetchOk = fetchNysse();
   
-  // Ensimmäinen piirto (luetaan myös valoisuus)
+  // Ensimmäinen piirto
   drawHomeScreen(getLightLevelLux());
 }
 
 void loop() {
   static unsigned long lastDraw = 0;
+  static unsigned long lastVU = 0;
   
-  // Päivitä näyttö 10 sekunnin välein jotta valoisuus päivittyy useammin
+  // Päivitä VU-mittari 100ms välein (erittäin nopea päivitys)
+  if (millis() - lastVU > 100 || lastVU == 0) {
+    lastVU = millis();
+    int vol = getMicrophoneVolume();
+    updateVUMeter(vol);
+  }
+
+  // Päivitä koko näyttö 10 sekunnin välein
   if (millis() - lastDraw > 10000 || lastDraw == 0) {
     lastDraw = millis();
     
@@ -95,5 +105,5 @@ void loop() {
     drawHomeScreen(getLightLevelLux());
   }
   
-  delay(100);
+  delay(10); // Pieni viive virransäästöön
 }

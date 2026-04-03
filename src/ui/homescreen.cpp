@@ -171,3 +171,30 @@ void drawHomeScreen(float lux) {
   gfx.setCursor(8, gfx.height()-18);
   gfx.print("Paivitetty: "); gfx.print(lastUpdated);
 }
+
+void updateVUMeter(int volume) {
+  // Piirretään palkki yläotsikon alle (Y = 40)
+  int barX = 120;
+  int barY = 40;
+  int w = 8;
+  int h = 12;
+  int spacing = 2;
+  int maxBars = 18; // 18*(8+2)=180px leveyttä yhteensä
+  
+  // Skaalaus: Äänitaso voi vaihdella hiljaisesta kohinasta (~10) kovaan puheeseen (~1500)
+  int activeBars = map(volume, 20, 1500, 0, maxBars);
+  if (activeBars < 0) activeBars = 0;
+  if (activeBars > maxBars) activeBars = maxBars;
+
+  for (int i = 0; i < maxBars; i++) {
+    uint16_t color = C_CARD; // tausta jos ei aktiivinen
+    if (i < activeBars) {
+      if (i < 10) color = C_GREEN;
+      else if (i < 15) color = C_YELLOW;
+      else color = C_RED;
+    }
+    // Vain osittainen näytön päivitys välkkymisen estämiseksi
+    gfx.fillRect(barX + i * (w + spacing), barY, w, h, color);
+  }
+}
+
