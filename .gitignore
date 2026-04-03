@@ -1,0 +1,8 @@
+.pio
+.vscode/
+
+#salasanat
+src/config.h
+
+# dokumentit
+*.md

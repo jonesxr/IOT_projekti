@@ -1,0 +1,16 @@
+#pragma once
+
+// Kopioi tämä tiedosto nimellä config.h ja täytä omat tiedot
+
+// WiFi-asetukset
+#define WIFI_SSID     "SINUN_WIFI_VERKON_NIMI"
+#define WIFI_PASSWORD "SINUN_WIFI_SALASANA"
+
+// Digitransit API-avain
+// Rekisteröi osoitteessa: https://portal-api.digitransit.fi
+#define DIGITRANSIT_API_KEY  "SINUN_API_AVAIN_TAHAN"
+
+// Nysse-pysäkki (etsi ID: https://api.digitransit.fi/graphiql/waltti/v1)
+// Esim. Härmälänranta = "tampere:2524"
+#define NYSSE_STOP_ID   "tampere:2524"
+#define MAX_DEPARTURES  6
