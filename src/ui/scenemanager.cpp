@@ -14,6 +14,9 @@ bool isTouching = false;
 void initScenes() {
     currentScene = 0;
     redrawNeeded = true;
+    
+    // Alustetaan BOOT-nappi virtuaalisena näkymänvaihtajana
+    pinMode(0, INPUT_PULLUP);
 }
 
 int getCurrentScene() { return currentScene; }
@@ -34,6 +37,19 @@ void prevScene() {
 }
 
 void processTouch() {
+    // Luetaan myös ESP32:n sisäänrakennettu BOOT-nappi (GPIO 0)
+    // Se vetää signaalin LOW-tilaan kun sitä painetaan.
+    static bool buttonPressed = false;
+    if (digitalRead(0) == LOW) {
+        if (!buttonPressed) {
+            buttonPressed = true;
+            nextScene();
+            Serial.println("BOOT-nappia painettu -> Vaihdetaan nakymaa!");
+        }
+    } else {
+        buttonPressed = false;
+    }
+
     int32_t cx, cy;
     bool touched = gfx.getTouch(&cx, &cy);
     
@@ -46,6 +62,7 @@ void processTouch() {
             touchStartY = cy;
             touchLastX = cx;
             touchStartTime = millis();
+            Serial.printf("\nKosketus alkoi X:%d Y:%d\n", cx, cy);
         } else {
             touchLastX = cx; // Päivitetään vetämistä
         }
@@ -54,15 +71,20 @@ void processTouch() {
         if (isTouching) {
             isTouching = false;
             int dx = touchLastX - touchStartX;
+            Serial.printf("Kosketus paattyi. Kesto: %lu ms, DX_Muutos: %d\n", (millis()-touchStartTime), dx);
             
-            // Jos veto oli nopea (alle 1s) ja riittävän pitkä (yli 60px)
-            if (millis() - touchStartTime < 1000) {
-                if (dx > 60) {
+            // Jos veto oli nopea (alle 1,5 s)
+            if (millis() - touchStartTime < 1500) {
+                if (dx > 40) {
                     prevScene(); // Vetäisy oikealle näyttää edellisen
                     Serial.println("Valikko: Swipe Oikealle");
-                } else if (dx < -60) {
+                } else if (dx < -40) {
                     nextScene(); // Vetäisy vasemmalle näyttää seuraavan
                     Serial.println("Valikko: Swipe Vasemmalle");
+                } else if (abs(dx) < 20) {
+                    // PELKKÄ NAPAUTUS VAIHTAA MYÖS NÄKYMÄÄ! Helpompi testata jos kalibrointi pielessä.
+                    nextScene();
+                    Serial.println("Valikko: Napautus -> Vaihdetaan seuraavaan");
                 }
             }
         }

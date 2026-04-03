@@ -16,7 +16,7 @@
 #include "sensors/inmp441_sensor.h"
 #include "ui/scenemanager.h"
 
-// Alustetaan näyttö (Määritelty display.h:ssa)
+// Alustetaan näyttö
 LGFX gfx;
 
 bool connectWiFi() {
@@ -52,9 +52,6 @@ bool connectWiFi() {
 
 void setup() {
   Serial.begin(115200);
-  uint32_t t = millis();
-  while (!Serial && (millis()-t) < 5000) delay(10);
-  Serial.println("\n=== Dashboard kaynnistyy ===");
 
   gfx.init();
   gfx.setRotation(0);
@@ -72,10 +69,6 @@ void setup() {
   // NTP aika (Suomi UTC+3)
   configTime(3*3600, 0, "pool.ntp.org", "time.google.com");
 
-  Serial.println("Odotetaan verkkoa...");
-  delay(1000);
-
-  Serial.println("Haetaan Nysse-dataa...");
   fetchOk = fetchNysse();
   
   // Ensimmäinen piirto

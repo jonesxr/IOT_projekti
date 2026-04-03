@@ -2,7 +2,6 @@
 #include <LovyanGFX.hpp>
 #include "../config.h"
 
-// LGFX – ILI9486 konfiguraatio kosketuksella
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9486  _panel;
   lgfx::Bus_SPI        _bus;
@@ -21,22 +20,25 @@ public:
       cfg.pin_cs=10; cfg.pin_rst=14; cfg.pin_busy=-1;
       cfg.panel_width=320; cfg.panel_height=480;
       cfg.readable=true; cfg.invert=false;
-      cfg.rgb_order=false; cfg.dlen_16bit=false; cfg.bus_shared=true;
+      cfg.rgb_order=false; cfg.dlen_16bit=false; cfg.bus_shared=false;
       _panel.config(cfg); }
     { auto cfg = _touch_instance.config();
+      // Käytetään erillisiä pinnejä 5, 6, 7
       cfg.x_min      = 0;
-      cfg.x_max      = 319;
+      cfg.x_max      = 4095;
       cfg.y_min      = 0;
-      cfg.y_max      = 479;
-      cfg.pin_int    = -1;
-      cfg.bus_shared = true;
+      cfg.y_max      = 4095;
+      cfg.pin_int    = -1; // Ei IRQ:ta, vakaampi klooneilla
+      cfg.bus_shared = false; // HUOM! Ei jaettu enää!
       cfg.offset_rotation = 0;
-      cfg.spi_host = SPI2_HOST;
+      
+      // MÄÄRITETÄÄN KOKONAAN ERI LAITTEISTOVÄYLÄ (HSPI) KOSKETUKSELLE
+      cfg.spi_host = SPI3_HOST; 
       cfg.freq = 1000000;
-      cfg.pin_sclk = 12;
-      cfg.pin_mosi = 11;
-      cfg.pin_miso = 13;
-      cfg.pin_cs   = TOUCH_CS_PIN;
+      cfg.pin_sclk = 5;
+      cfg.pin_mosi = 6;
+      cfg.pin_miso = 7;
+      cfg.pin_cs   = 4;
       _touch_instance.config(cfg);
       _panel.setTouch(&_touch_instance); }
     setPanel(&_panel);
