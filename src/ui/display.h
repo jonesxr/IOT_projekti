@@ -1,0 +1,32 @@
+#pragma once
+#include <LovyanGFX.hpp>
+
+// LGFX – ILI9486 konfiguraatio
+class LGFX : public lgfx::LGFX_Device {
+  lgfx::Panel_ILI9486 _panel;
+  lgfx::Bus_SPI       _bus;
+public:
+  LGFX() {
+    { auto cfg = _bus.config();
+      cfg.spi_host=SPI2_HOST; cfg.spi_mode=0;
+      cfg.freq_write=40000000; cfg.freq_read=16000000;
+      cfg.spi_3wire=false; cfg.use_lock=true;
+      cfg.dma_channel=SPI_DMA_CH_AUTO;
+      cfg.pin_sclk=12; cfg.pin_mosi=11;
+      cfg.pin_miso=13; cfg.pin_dc=9;
+      _bus.config(cfg); _panel.setBus(&_bus); }
+    { auto cfg = _panel.config();
+      cfg.pin_cs=10; cfg.pin_rst=14; cfg.pin_busy=-1;
+      cfg.panel_width=320; cfg.panel_height=480;
+      cfg.readable=true; cfg.invert=false;
+      cfg.rgb_order=false; cfg.dlen_16bit=false; cfg.bus_shared=true;
+      _panel.config(cfg); }
+    setPanel(&_panel);
+  }
+};
+
+extern LGFX gfx;
+
+// Värit globaalisti saatavilla
+extern uint16_t C_BG, C_HEADER, C_TEXT, C_DIM, C_ACCENT,
+                C_GREEN, C_YELLOW, C_RED, C_CARD, C_WHITE;

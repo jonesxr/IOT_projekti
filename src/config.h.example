@@ -14,3 +14,6 @@
 // Esim. Härmälänranta = "tampere:2524"
 #define NYSSE_STOP_ID   "tampere:2524"
 #define MAX_DEPARTURES  6
+
+#define I2C_SDA_PIN 17
+#define I2C_SCL_PIN 16
