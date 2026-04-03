@@ -14,6 +14,7 @@
 #include "api/nysse.h"
 #include "sensors/bh1750_sensor.h"
 #include "sensors/inmp441_sensor.h"
+#include "sensors/mq_sensor.h"
 #include "ui/scenemanager.h"
 
 // Alustetaan näyttö
@@ -61,6 +62,7 @@ void setup() {
   // Käynnistetään anturit
   initLightSensor();
   initMicrophone();
+  initMQSensor();
   initScenes();
 
   // WiFi
@@ -81,13 +83,15 @@ void loop() {
   
   processTouch(); // Lue sipaisu
 
-  // Äänen ja ruudun nopea päivitys
+  // Anturien nopea päivitys
   if (millis() - lastFastUpdate > 50) {
       lastFastUpdate = millis();
       int vol = getMicrophoneVolume();
+      updateMQSensor(); // Päivitä kaasuluku
       
       if (getCurrentScene() == 1) {
           updateSensorVUMeter(vol); // Iso Sensoriruudun VU-mittari
+          updateMQBar(getMQLevel()); // Päivitä kaasupalkki
       }
   }
 
@@ -102,7 +106,7 @@ void loop() {
      if (getCurrentScene() == 0) {
         drawHomeScreen(getLightLevelLux());
      } else if (getCurrentScene() == 1) {
-        drawSensorScreen(getLightLevelLux(), getMicrophoneVolume());
+        drawSensorScreen(getLightLevelLux(), getMicrophoneVolume(), getMQLevel());
      }
      
      setRedrawDone();

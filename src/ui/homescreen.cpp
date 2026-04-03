@@ -193,7 +193,7 @@ void updateVUMeter(int volume) {
 // ============================================================
 // SECOND SCREEN: Sensorit
 // ============================================================
-void drawSensorScreen(float lux, int volume) {
+void drawSensorScreen(float lux, int volume, int mqLevel) {
   gfx.fillScreen(C_BG);
 
   // ------ HEADER ------
@@ -203,37 +203,71 @@ void drawSensorScreen(float lux, int volume) {
   gfx.setTextColor(C_WHITE); gfx.setTextSize(3);
   gfx.setCursor(10, 15); gfx.print("SENSORIT");
 
-  int y = 90;
+  int y = 70;
   
   // ------ Valoisuus-kortti ------
-  gfx.fillRect(20, y, gfx.width()-40, 90, C_CARD);
+  gfx.fillRect(20, y, gfx.width()-40, 70, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-  gfx.setCursor(30, y+15); gfx.print("Huoneen valoisuus");
+  gfx.setCursor(30, y+10); gfx.print("Valoisuus (BH1750)");
   
-  gfx.setTextColor(C_YELLOW); gfx.setTextSize(4);
-  gfx.setCursor(30, y+45); 
+  gfx.setTextColor(C_YELLOW); gfx.setTextSize(3);
+  gfx.setCursor(30, y+35); 
   if (lux >= 0) gfx.printf("%.1f Lux", lux);
   else gfx.print("Ei dataa");
   
-  y += 110;
+  y += 85;
+
+  // ------ Ilmanlaatu-kortti (MQ-135) ------
+  gfx.fillRect(20, y, gfx.width()-40, 110, C_CARD);
+  gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+  gfx.setCursor(30, y+10); gfx.print("Ilmanlaatu (MQ-135)");
+  
+  updateMQBar(mqLevel);
+  
+  y += 125;
   
   // ------ Mikrofoni-kortti ------
-  gfx.fillRect(20, y, gfx.width()-40, 140, C_CARD);
+  gfx.fillRect(20, y, gfx.width()-40, 110, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-  gfx.setCursor(30, y+15); gfx.print("Aanenpaine (INMP441)");
+  gfx.setCursor(30, y+10); gfx.print("Aani (INMP441)");
 
-  // Piirrä palkit heti alkuperäisellä volumella
   updateSensorVUMeter(volume);
 }
 
+void updateMQBar(int mqLevel) {
+  int barX = 35;
+  int barY = 220; // MQ-kortin sisällä
+  int barW = gfx.width() - 70;
+  int barH = 20;
+  
+  // Piirretään kehys
+  gfx.drawRect(barX, barY, barW, barH, C_DIM);
+  
+  // Skaalataan 12-bittinen ADC herkemmäksi (normaali ilma on n. 400-1100 välillä)
+  int fillW = map(mqLevel, 350, 2000, 0, barW-4);
+  if (fillW < 0) fillW = 0;
+  if (fillW > barW-4) fillW = barW-4;
+  
+  uint16_t color = C_GREEN;
+  if (mqLevel > 800) color = C_YELLOW; // Keltainen jo vähän ennen 1000 rajaa
+  if (mqLevel > 1500) color = C_RED;   // Punainen jos todella huono ilma
+  
+  gfx.fillRect(barX+2, barY+2, fillW, barH-4, color);
+  gfx.fillRect(barX+2+fillW, barY+2, barW-4-fillW, barH-4, C_BG);
+  
+  gfx.setTextColor(C_TEXT); gfx.setTextSize(1);
+  gfx.setCursor(barX, barY + 25);
+  gfx.printf("VOC/CO2 Indeksi: %d", mqLevel);
+}
+
 void updateSensorVUMeter(int volume) {
-  // Piirretään audiopalkki y=260 korttiin
+  // Piirretään audiopalkki y=330 korttiin
   int barX = 30;
-  int barY = 260; 
+  int barY = 345; 
   int w = 8;
-  int h = 40;
+  int h = 30;
   int spacing = 2;
-  int maxBars = 26; // 320px leveyttä, tilaa on huomattavasti
+  int maxBars = 26; 
   
   int activeBars = map(volume, 20, 1500, 0, maxBars);
   if (activeBars < 0) activeBars = 0;
