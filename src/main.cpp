@@ -14,6 +14,7 @@
 #include "api/nysse.h"
 #include "sensors/bh1750_sensor.h"
 #include "sensors/inmp441_sensor.h"
+#include "ui/scenemanager.h"
 
 // Alustetaan näyttö (Määritelty display.h:ssa)
 LGFX gfx;
@@ -63,6 +64,7 @@ void setup() {
   // Käynnistetään anturit
   initLightSensor();
   initMicrophone();
+  initScenes();
 
   // WiFi
   connectWiFi();
@@ -81,29 +83,40 @@ void setup() {
 }
 
 void loop() {
-  static unsigned long lastDraw = 0;
-  static unsigned long lastVU = 0;
+  static unsigned long lastUpdate = 0;
+  static unsigned long lastFastUpdate = 0;
   
-  // Päivitä VU-mittari 100ms välein (erittäin nopea päivitys)
-  if (millis() - lastVU > 100 || lastVU == 0) {
-    lastVU = millis();
-    int vol = getMicrophoneVolume();
-    updateVUMeter(vol);
+  processTouch(); // Lue sipaisu
+
+  // Äänen ja ruudun nopea päivitys
+  if (millis() - lastFastUpdate > 50) {
+      lastFastUpdate = millis();
+      int vol = getMicrophoneVolume();
+      
+      if (getCurrentScene() == 0) {
+          updateVUMeter(vol); // Pieni Nysse-ruudun VU-mittari
+      } else if (getCurrentScene() == 1) {
+          updateSensorVUMeter(vol); // Iso Sensoriruudun VU-mittari
+      }
   }
 
-  // Päivitä koko näyttö 10 sekunnin välein
-  if (millis() - lastDraw > 10000 || lastDraw == 0) {
-    lastDraw = millis();
-    
-    // Hae uusi Nysse-data minuutin välein (60000ms)
-    if (millis() - lastFetchMs > 60000 || lastFetchMs == 0) {
-      lastFetchMs = millis();
-      fetchOk = fetchNysse();
-    }
-    
-    // Piirrä näyttö ja hae uusin valoisuus
-    drawHomeScreen(getLightLevelLux());
+  // Näytön iso päivitys tai näkymän vaihto
+  if (isRedrawNeeded() || (millis() - lastUpdate > 10000)) {
+     // Hae Nysse data vain minuutin välein ja jos olemme Nysse-ruudulla
+     if (millis() - lastFetchMs > 60000 && getCurrentScene() == 0) {
+        lastFetchMs = millis();
+        fetchOk = fetchNysse();
+     }
+     
+     if (getCurrentScene() == 0) {
+        drawHomeScreen(getLightLevelLux());
+     } else if (getCurrentScene() == 1) {
+        drawSensorScreen(getLightLevelLux(), getMicrophoneVolume());
+     }
+     
+     setRedrawDone();
+     lastUpdate = millis();
   }
   
-  delay(10); // Pieni viive virransäästöön
+  delay(10); // Pieni viive virransäästöön ja wdt:n nollaamiseen
 }

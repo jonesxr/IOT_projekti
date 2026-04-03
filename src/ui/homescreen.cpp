@@ -198,3 +198,64 @@ void updateVUMeter(int volume) {
   }
 }
 
+// ============================================================
+// SECOND SCREEN: Sensorit
+// ============================================================
+void drawSensorScreen(float lux, int volume) {
+  gfx.fillScreen(C_BG);
+
+  // ------ HEADER ------
+  gfx.fillRect(0, 0, gfx.width(), 58, C_HEADER);
+  gfx.drawFastHLine(0, 58, gfx.width(), C_ACCENT);
+
+  gfx.setTextColor(C_WHITE); gfx.setTextSize(3);
+  gfx.setCursor(10, 15); gfx.print("SENSORIT");
+
+  int y = 90;
+  
+  // ------ Valoisuus-kortti ------
+  gfx.fillRect(20, y, gfx.width()-40, 90, C_CARD);
+  gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+  gfx.setCursor(30, y+15); gfx.print("Huoneen valoisuus");
+  
+  gfx.setTextColor(C_YELLOW); gfx.setTextSize(4);
+  gfx.setCursor(30, y+45); 
+  if (lux >= 0) gfx.printf("%.1f Lux", lux);
+  else gfx.print("Ei dataa");
+  
+  y += 110;
+  
+  // ------ Mikrofoni-kortti ------
+  gfx.fillRect(20, y, gfx.width()-40, 140, C_CARD);
+  gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+  gfx.setCursor(30, y+15); gfx.print("Aanenpaine (INMP441)");
+
+  // Piirrä palkit heti alkuperäisellä volumella
+  updateSensorVUMeter(volume);
+}
+
+void updateSensorVUMeter(int volume) {
+  // Piirretään audiopalkki y=260 korttiin
+  int barX = 30;
+  int barY = 260; 
+  int w = 8;
+  int h = 40;
+  int spacing = 2;
+  int maxBars = 26; // 320px leveyttä, tilaa on huomattavasti
+  
+  int activeBars = map(volume, 20, 1500, 0, maxBars);
+  if (activeBars < 0) activeBars = 0;
+  if (activeBars > maxBars) activeBars = maxBars;
+
+  for (int i = 0; i < maxBars; i++) {
+    uint16_t color = C_BG; // tummempi tausta
+    if (i < activeBars) {
+      if (i < 15) color = C_GREEN;
+      else if (i < 22) color = C_YELLOW;
+      else color = C_RED;
+    }
+    gfx.fillRect(barX + i * (w + spacing), barY, w, h, color);
+  }
+}
+
+
