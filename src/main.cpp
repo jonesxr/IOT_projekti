@@ -86,9 +86,7 @@ void loop() {
       lastFastUpdate = millis();
       int vol = getMicrophoneVolume();
       
-      if (getCurrentScene() == 0) {
-          updateVUMeter(vol); // Pieni Nysse-ruudun VU-mittari
-      } else if (getCurrentScene() == 1) {
+      if (getCurrentScene() == 1) {
           updateSensorVUMeter(vol); // Iso Sensoriruudun VU-mittari
       }
   }

@@ -90,14 +90,6 @@ void drawHomeScreen(float lux) {
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
   gfx.setCursor(120, 18); gfx.print(dateBuf);
 
-  // Valoisuuden näyttö oikeaan yläkulmaan jos saatavilla
-  if (lux >= 0) {
-    gfx.setTextColor(C_YELLOW);
-    gfx.setTextSize(1);
-    gfx.setCursor(gfx.width() - 80, 18);
-    gfx.printf("%.1f Lux", lux);
-  }
-
   // ------ PYSÄKIN NIMI ------
   char stopNameAscii[48];
   utf8toAscii(stopNameAscii, stopName, sizeof(stopNameAscii));
