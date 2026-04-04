@@ -2,7 +2,7 @@
 #include "display.h"
 
 int currentScene = 0;
-const int MAX_SCENES = 2; // 0 = Nysse, 1 = Ääni/Sensorit
+const int MAX_SCENES = 3; // 0 = Nysse, 1 = Sensorit, 2 = Info (IP)
 bool redrawNeeded = true;
 
 int touchStartX = -1;

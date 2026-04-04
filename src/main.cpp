@@ -110,6 +110,8 @@ void loop() {
         drawHomeScreen(getLightLevelLux());
      } else if (getCurrentScene() == 1) {
         drawSensorScreen(getLightLevelLux(), getMicrophoneVolume(), getMQLevel());
+     } else if (getCurrentScene() == 2) {
+        drawInfoScreen();
      }
      
      setRedrawDone();

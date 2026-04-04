@@ -285,4 +285,50 @@ void updateSensorVUMeter(int volume) {
   }
 }
 
+// ============================================================
+// THIRD SCREEN: Laitteen tiedot (IP / WiFi)
+// ============================================================
+void drawInfoScreen() {
+    gfx.fillScreen(C_BG);
+
+    // ------ HEADER ------
+    gfx.fillRect(0, 0, gfx.width(), 58, C_HEADER);
+    gfx.drawFastHLine(0, 58, gfx.width(), C_ACCENT);
+    gfx.setTextColor(C_WHITE); gfx.setTextSize(3);
+    gfx.setCursor(10, 15); gfx.print("LAITE-INFO");
+
+    int y = 100;
+    
+    // ------ WiFi / IP KORTTI ------
+    gfx.fillRect(20, y, gfx.width()-40, 180, C_CARD);
+    
+    gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+    gfx.setCursor(40, y + 20); gfx.print("Osoite (Remote View):");
+    
+    gfx.setTextColor(C_ACCENT); gfx.setTextSize(3);
+    gfx.setCursor(40, y + 50); 
+    gfx.print(WiFi.localIP().toString());
+    
+    gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+    gfx.setCursor(40, y + 100); gfx.print("Verkko:");
+    gfx.setTextColor(C_WHITE);
+    gfx.setCursor(40, y + 130); gfx.print(WiFi.SSID());
+    
+    // ------ ALAOSAN LUKEMAT ------
+    y = 320;
+    unsigned long uptimeS = millis() / 1000;
+    int h = uptimeS / 3600;
+    int m = (uptimeS % 3600) / 60;
+    
+    gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+    gfx.setCursor(20, y); gfx.print("Kaynnissa:");
+    gfx.setTextColor(C_WHITE);
+    gfx.printf(" %dh %dm", h, m);
+    
+    gfx.setCursor(20, y + 40);
+    gfx.setTextColor(C_DIM); gfx.print("Versio:");
+    gfx.setTextColor(C_DIM); gfx.print(" 1.0 (ESP32-S3)");
+}
+
+
 
