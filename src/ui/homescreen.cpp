@@ -161,7 +161,8 @@ void drawHomeScreen(float lux) {
   gfx.fillRect(0, gfx.height()-27, gfx.width(), 27, C_HEADER);
   gfx.setTextColor(C_DIM); gfx.setTextSize(1);
   gfx.setCursor(8, gfx.height()-18);
-  gfx.print("Paivitetty: "); gfx.print(lastUpdated);
+  gfx.print("IP: "); gfx.print(WiFi.localIP().toString());
+  gfx.print(" | Paivitetty: "); gfx.print(lastUpdated);
 }
 
 void updateVUMeter(int volume) {

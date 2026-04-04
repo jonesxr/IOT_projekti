@@ -16,6 +16,7 @@
 #include "sensors/inmp441_sensor.h"
 #include "sensors/mq_sensor.h"
 #include "ui/scenemanager.h"
+#include "api/web_server_logic.h"
 
 // Alustetaan näyttö
 LGFX gfx;
@@ -66,7 +67,9 @@ void setup() {
   initScenes();
 
   // WiFi
-  connectWiFi();
+  if (connectWiFi()) {
+      initWebServer(); // Käynnistä etähallinta heti WiFin jälkeen
+  }
 
   // NTP aika (Suomi UTC+3)
   configTime(3*3600, 0, "pool.ntp.org", "time.google.com");
@@ -113,5 +116,6 @@ void loop() {
      lastUpdate = millis();
   }
   
+  handleWebServer(); // Käsittele verkkosivun pyynnöt (Nysse Remote)
   delay(10); // Pieni viive virransäästöön ja wdt:n nollaamiseen
 }
