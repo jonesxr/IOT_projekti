@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <SD.h>
 #include "config.h"
 #include "ui/display.h"
 #include "ui/homescreen.h"
@@ -65,6 +66,13 @@ void setup() {
   initMicrophone();
   initMQSensor();
   initScenes();
+
+  // Alustetaan SD-kortti
+  if (!SD.begin(SD_CS_PIN)) {
+      Serial.println("SD-kortin alustus epäonnistui! (Tarkista kytkentä ja CS-pinni)");
+  } else {
+      Serial.println("SD-kortti alustettu onnistuneesti.");
+  }
 
   // WiFi
   if (connectWiFi()) {
