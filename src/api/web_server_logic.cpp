@@ -45,6 +45,18 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         .del-btn { color: #ff4646; background: none; border: 1px solid #ff4646; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em; transition: 0.2s; }
         .del-btn:hover { background: #ff4646; color: #fff; }
         .empty-msg { text-align: center; padding: 20px; color: #404864; font-style: italic; }
+
+        /* Drag-and-drop tyylit */
+        .drop-zone {
+            border: 2px dashed #202845;
+            border-radius: 12px;
+            padding: 20px;
+            transition: 0.3s;
+        }
+        .drop-zone--over {
+            border-color: #508cff;
+            background: rgba(80, 140, 255, 0.05);
+        }
     </style>
 </head>
 <body>
@@ -85,14 +97,28 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             </div>
         </div>
 
-        <div class="card">
-            <div class="label">Lataa tiedosto SD-kortille</div>
-            <div style="margin-top: 10px;">
+        <div class="card drop-zone" id="drop-zone">
+            <div class="label" style="margin-bottom: 10px; text-align: center;">Lataa tiedosto SD-kortille</div>
+            <div style="text-align: center;">
                 <input type="file" id="file-input" style="display: none;">
-                <button onclick="document.getElementById('file-input').click()" style="background: #202845; color: #fff; border: 1px solid #508cff; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%;">Valitse tiedosto...</button>
-                <div id="file-name" style="margin-top: 8px; font-size: 0.9em; color: #646e8c; text-align: center;">Ei tiedostoa valittuna</div>
-                <button onclick="uploadFile()" id="upload-btn" style="margin-top: 10px; background: #508cff; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; font-weight: bold; display: none;">Laheta NYT</button>
-                <div id="upload-status" style="margin-top: 10px; text-align: center; font-size: 0.9em;"></div>
+                
+                <div id="upload-prompt">
+                    <div style="color: #404864; margin-bottom: 10px;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <p style="margin: 5px 0; font-size: 0.9em;">Raahaa tiedosto tähän tai</p>
+                    </div>
+                    <button onclick="document.getElementById('file-input').click()" style="background: #202845; color: #fff; border: 1px solid #508cff; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em;">Valitse tiedosto</button>
+                </div>
+
+                <div id="file-info" style="display: none;">
+                    <div id="file-name" style="font-weight: bold; color: #fff; margin-bottom: 10px; word-break: break-all;"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="cancelUpload()" style="flex: 1; background: #0a0c14; color: #ff4646; border: 1px solid #ff4646; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">Peruuta</button>
+                        <button onclick="uploadFile()" id="upload-btn" style="flex: 2; background: #508cff; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">Laheta NYT</button>
+                    </div>
+                </div>
+
+                <div id="upload-status" style="margin-top: 15px; font-size: 0.9em;"></div>
             </div>
         </div>
 
@@ -170,16 +196,49 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         }
 
         const fileInput = document.getElementById('file-input');
-        fileInput.addEventListener('change', function() {
-            if (this.files[0]) {
-                document.getElementById('file-name').innerText = this.files[0].name;
-                document.getElementById('upload-btn').style.display = 'block';
-            }
+        const dropZone = document.getElementById('drop-zone');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const fileInfo = document.getElementById('file-info');
+        const fileNameDisplay = document.getElementById('file-name');
+        let selectedFile = null;
+
+        // Drag and drop tapahtumat
+        ['dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
         });
 
+        dropZone.addEventListener('dragover', () => dropZone.classList.add('drop-zone--over'));
+        ['dragleave', 'drop'].forEach(evt => dropZone.addEventListener(evt, () => dropZone.classList.remove('drop-zone--over')));
+
+        dropZone.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFileSelect(files[0]);
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files[0]) handleFileSelect(this.files[0]);
+        });
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+            fileNameDisplay.innerText = file.name;
+            uploadPrompt.style.display = 'none';
+            fileInfo.style.display = 'block';
+            document.getElementById('upload-status').innerText = '';
+        }
+
+        function cancelUpload() {
+            selectedFile = null;
+            fileInput.value = '';
+            uploadPrompt.style.display = 'block';
+            fileInfo.style.display = 'none';
+        }
+
         function uploadFile() {
-            const file = fileInput.files[0];
-            if (!file) return;
+            if (!selectedFile) return;
             
             const btn = document.getElementById('upload-btn');
             const status = document.getElementById('upload-status');
@@ -190,7 +249,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             status.style.color = '#ffca32';
 
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', selectedFile);
 
             fetch('/upload', {
                 method: 'POST',
@@ -200,10 +259,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                 if (response.ok) {
                     status.innerText = 'Ladattu onnistuneesti!';
                     status.style.color = '#3cc864';
-                    fileInput.value = '';
-                    document.getElementById('file-name').innerText = 'Ei tiedostoa valittuna';
-                    btn.style.display = 'none';
-                    updateFileList(); // Paivita lista heti latauksen jalkeen
+                    setTimeout(cancelUpload, 2000); // Nollaa nakyma hetken kuluttua
+                    updateFileList();
                 } else {
                     throw new Error('Lataus epaonnistui');
                 }
