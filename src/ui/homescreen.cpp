@@ -6,6 +6,30 @@
 uint16_t C_BG, C_HEADER, C_TEXT, C_DIM, C_ACCENT,
          C_GREEN, C_YELLOW, C_RED, C_CARD, C_WHITE;
 
+// UI Cache muuttujat, jotta vältytään välkkymiseltä (mutta voidaan nollata sivunvaihdon yhteydessä)
+char cacheLastTimeBuf[10] = "";
+char cacheLastDateBuf[20] = "";
+float cacheLastLux = -999.0f;
+float cacheLastDust = -999.0f;
+int cacheLastMqLevel = -1;
+int cacheLastMqFillW = -1;
+int cacheLastVUBars = -1;
+int cacheLastH = -1;
+int cacheLastM = -1;
+
+void resetUICaches() {
+    cacheLastTimeBuf[0] = 0;
+    cacheLastDateBuf[0] = 0;
+    cacheLastLux = -999.0f;
+    cacheLastDust = -999.0f;
+    cacheLastMqLevel = -1;
+    cacheLastMqFillW = -1;
+    cacheLastVUBars = -1;
+    cacheLastH = -1;
+    cacheLastM = -1;
+}
+
+
 void initColors() {
   C_BG     = gfx.color565(10,  12,  20);
   C_HEADER = gfx.color565(20,  25,  45);
@@ -71,6 +95,7 @@ void drawWifiScreen(const char* status, int progress, uint16_t color) {
 }
 
 void drawHomeScreen(float lux) {
+  resetUICaches();
   gfx.fillScreen(C_BG);
 
   // ------ HEADER: Kello + päivämäärä ------
@@ -198,7 +223,8 @@ void updateVUMeter(int volume) {
 // ============================================================
 // SECOND SCREEN: Sensorit
 // ============================================================
-void drawSensorScreen(float lux, int volume, int mqLevel) {
+void drawSensorScreen(float lux, int volume, int mqLevel, float dustDensity) {
+  resetUICaches();
   gfx.fillScreen(C_BG);
 
   // ------ HEADER ------
@@ -208,66 +234,64 @@ void drawSensorScreen(float lux, int volume, int mqLevel) {
   gfx.setTextColor(C_WHITE); gfx.setTextSize(3);
   gfx.setCursor(10, 15); gfx.print("SENSORIT");
 
-  int y = 70;
+  int y = 65;
+  int cardH = 95;
+  int spacing = 8;
   
-  // ------ Valoisuus-kortti ------
-  gfx.fillRect(20, y, gfx.width()-40, 70, C_CARD);
+  // ------ 1. Valoisuus-kortti ------
+  gfx.fillRect(20, y, gfx.width()-40, 80, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-  gfx.setCursor(30, y+10); gfx.print("Valoisuus (BH1750)");
-  
-  gfx.setTextColor(C_YELLOW); gfx.setTextSize(3);
-  gfx.setCursor(30, y+35); 
-  if (lux >= 0) gfx.printf("%.1f Lux", lux);
-  else gfx.print("Ei dataa");
-  
-  y += 85;
+  gfx.setCursor(30, y+10); gfx.print("Valoisuus");
+  y += 80 + spacing;
 
-  // ------ Ilmanlaatu-kortti (MQ-135) ------
-  gfx.fillRect(20, y, gfx.width()-40, 110, C_CARD);
+  // ------ 2. Ilmanlaatu-kortti (MQ-135) ------
+  gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-  gfx.setCursor(30, y+10); gfx.print("Ilmanlaatu (MQ-135)");
+  gfx.setCursor(30, y+10); gfx.print("Kaasu (MQ-135)");
+  y += cardH + spacing;
   
-  updateMQBar(mqLevel);
+  // ------ 3. Pöly-kortti (Sharp) ------
+  gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
+  gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+  gfx.setCursor(30, y+10); gfx.print("Poly (PM2.5)");
+  y += cardH + spacing;
   
-  y += 125;
-  
-  // ------ Mikrofoni-kortti ------
-  gfx.fillRect(20, y, gfx.width()-40, 110, C_CARD);
+  // ------ 4. Mikrofoni-kortti ------
+  gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
   gfx.setCursor(30, y+10); gfx.print("Aani (INMP441)");
 
-  updateSensorVUMeter(volume);
+  // Varsinaiset arvot ja palkit tulostetaan nollaamalla cachet 1. piirrossa 
+  // (Päivitysruutiini loopin puolella piirtää ne HETI oikeille paikoille!)
 }
 
 void updateMQBar(int mqLevel) {
   int barX = 35;
-  int barY = 220; // MQ-kortin sisällä
+  int barY = 190; // Uusi koordinaatti: Y=153 kortin sisällä
   int barW = gfx.width() - 70;
   int barH = 20;
   
-  // Piirretään kehys
-  gfx.drawRect(barX, barY, barW, barH, C_DIM);
+  // Piirretään kehys (vain kerran, jos mahdollista, mutta pidetään tässä yksinkertaisuuden vuoksi)
+  // Piirretään se välimuistin ohi vain kerran!
+  if (cacheLastMqFillW == -1) gfx.drawRect(barX, barY, barW, barH, C_DIM);
   
-  // Skaalataan 12-bittinen ADC herkemmäksi (normaali ilma on n. 400-1100 välillä)
   int fillW = map(mqLevel, 350, 2000, 0, barW-4);
   if (fillW < 0) fillW = 0;
   if (fillW > barW-4) fillW = barW-4;
   
-  static int lastFillW = -1;
-  if (fillW != lastFillW) {
-      lastFillW = fillW;
+  if (fillW != cacheLastMqFillW) {
+      cacheLastMqFillW = fillW;
       uint16_t color = C_GREEN;
-      if (mqLevel > 800) color = C_YELLOW; // Keltainen jo vähän ennen 1000 rajaa
-      if (mqLevel > 1500) color = C_RED;   // Punainen jos todella huono ilma
+      if (mqLevel > 800) color = C_YELLOW; 
+      if (mqLevel > 1500) color = C_RED;   
       
       gfx.fillRect(barX+2, barY+2, fillW, barH-4, color);
       gfx.fillRect(barX+2+fillW, barY+2, barW-4-fillW, barH-4, C_BG);
   }
   
-  static int lastMqLevel = -1;
-  if (mqLevel != lastMqLevel) {
-      lastMqLevel = mqLevel;
-      gfx.fillRect(barX, barY + 25, barW, 15, C_CARD); // Clear old text
+  if (mqLevel != cacheLastMqLevel) {
+      cacheLastMqLevel = mqLevel;
+      gfx.fillRect(barX, barY + 25, barW, 15, C_CARD); 
       gfx.setTextColor(C_TEXT); gfx.setTextSize(1);
       gfx.setCursor(barX, barY + 25);
       gfx.printf("VOC/CO2 Indeksi: %d", mqLevel);
@@ -275,9 +299,9 @@ void updateMQBar(int mqLevel) {
 }
 
 void updateSensorVUMeter(int volume) {
-  // Piirretään audiopalkki y=330 korttiin
+  // Piirretään audiopalkki alimmassa kortissa
   int barX = 30;
-  int barY = 345; 
+  int barY = 405; // Uusi sijainti alimmassa kortissa (Y = 359)
   int w = 8;
   int h = 30;
   int spacing = 2;
@@ -287,9 +311,8 @@ void updateSensorVUMeter(int volume) {
   if (activeBars < 0) activeBars = 0;
   if (activeBars > maxBars) activeBars = maxBars;
 
-  static int lastActiveBars = -1;
-  if (activeBars != lastActiveBars) {
-      lastActiveBars = activeBars;
+  if (activeBars != cacheLastVUBars) {
+      cacheLastVUBars = activeBars;
       for (int i = 0; i < maxBars; i++) {
         uint16_t color = C_BG; // tummempi tausta
         if (i < activeBars) {
@@ -306,6 +329,7 @@ void updateSensorVUMeter(int volume) {
 // THIRD SCREEN: Laitteen tiedot (IP / WiFi)
 // ============================================================
 void drawInfoScreen() {
+    resetUICaches();
     gfx.fillScreen(C_BG);
 
     // ------ HEADER ------
@@ -348,9 +372,6 @@ void drawInfoScreen() {
 
 
 void updateClockDisplay() {
-  static char lastTimeBuf[10] = "";
-  static char lastDateBuf[20] = "";
-  
   struct tm ti;
   getLocalTime(&ti);
   char timeBuf[10], dateBuf[20];
@@ -359,17 +380,15 @@ void updateClockDisplay() {
   snprintf(dateBuf, sizeof(dateBuf), "%s %d.%d.%d",
            weekdays[ti.tm_wday], ti.tm_mday, ti.tm_mon+1, ti.tm_year+1900);
 
-  // Päivitä vain jos kellonaika on muuttunut
-  if (strcmp(timeBuf, lastTimeBuf) != 0) {
-      strcpy(lastTimeBuf, timeBuf);
+  if (strcmp(timeBuf, cacheLastTimeBuf) != 0) {
+      strcpy(cacheLastTimeBuf, timeBuf);
       gfx.fillRect(10, 12, 100, 30, C_HEADER); 
       gfx.setTextColor(C_WHITE); gfx.setTextSize(3);
       gfx.setCursor(10, 12); gfx.print(timeBuf);
   }
   
-  // Päivitä vain jos päivämäärä on muuttunut
-  if (strcmp(dateBuf, lastDateBuf) != 0) {
-      strcpy(lastDateBuf, dateBuf);
+  if (strcmp(dateBuf, cacheLastDateBuf) != 0) {
+      strcpy(cacheLastDateBuf, dateBuf);
       gfx.fillRect(120, 18, 150, 20, C_HEADER);
       gfx.setTextColor(C_DIM); gfx.setTextSize(2);
       gfx.setCursor(120, 18); gfx.print(dateBuf);
@@ -377,12 +396,9 @@ void updateClockDisplay() {
 }
 
 void updateSensorLuxText(float lux) {
-  static float lastLux = -999.0f;
-  
-  // Päivitetään vain jos ero vanhaan on riittävä, estää turhan piirtämisen
-  if (abs(lux - lastLux) > 0.1f || lastLux == -999.0f) {
-      lastLux = lux;
-      int y = 70;
+  if (abs(lux - cacheLastLux) > 0.1f || cacheLastLux == -999.0f) {
+      cacheLastLux = lux;
+      int y = 65; // Y ylimpään korttiin
       gfx.fillRect(30, y+35, 150, 25, C_CARD);
       gfx.setTextColor(C_YELLOW); gfx.setTextSize(3);
       gfx.setCursor(30, y+35); 
@@ -391,19 +407,34 @@ void updateSensorLuxText(float lux) {
   }
 }
 
+void updateDustSensorText(float dustDensity) {
+    if (abs(dustDensity - cacheLastDust) > 0.5f || cacheLastDust == -999.0f) {
+        cacheLastDust = dustDensity;
+        
+        int y = 256 + 35; // Kolmannen kortin teksti Y (alkaa ~256)
+        gfx.fillRect(30, y, gfx.width()-60, 35, C_CARD); // Pyyhi vanha teksti kokonaan
+        
+        // Värikoodaus hiukkasten määrän mukaan (PM2.5)
+        uint16_t color = C_GREEN;
+        if (dustDensity > 35.0f) color = C_YELLOW;
+        if (dustDensity > 75.0f) color = C_RED;
+        if (dustDensity > 150.0f) color = gfx.color565(128, 0, 128); // Purppura/vaara
+
+        gfx.setTextColor(color); gfx.setTextSize(3);
+        gfx.setCursor(30, y); 
+        gfx.printf("%.1f ug/m3", dustDensity);
+    }
+}
+
 void updateInfoUptime() {
-    static int lastH = -1;
-    static int lastM = -1;
-    
     int y = 320;
     unsigned long uptimeS = millis() / 1000;
     int h = uptimeS / 3600;
     int m = (uptimeS % 3600) / 60;
     
-    // Vain jos minuutit muuttuvat (kerran minuutissa)
-    if (h != lastH || m != lastM) {
-        lastH = h;
-        lastM = m;
+    if (h != cacheLastH || m != cacheLastM) {
+        cacheLastH = h;
+        cacheLastM = m;
         gfx.fillRect(145, y, 150, 20, C_BG); 
         gfx.setTextColor(C_WHITE); gfx.setTextSize(2);
         gfx.setCursor(145, y); 

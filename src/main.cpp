@@ -16,6 +16,7 @@
 #include "sensors/bh1750_sensor.h"
 #include "sensors/inmp441_sensor.h"
 #include "sensors/mq_sensor.h"
+#include "sensors/dust_sensor.h"
 #include "ui/scenemanager.h"
 #include "api/web_server_logic.h"
 
@@ -65,6 +66,7 @@ void setup() {
   initLightSensor();
   initMicrophone();
   initMQSensor();
+  initDustSensor();
   initScenes();
 
   // Alustetaan SD-kortti
@@ -100,6 +102,7 @@ void loop() {
       lastFastUpdate = millis();
       int vol = getMicrophoneVolume();
       updateMQSensor(); // Päivitä kaasuluku
+      updateDustSensor(); // Päivitä pölyanturi
       
       if (getCurrentScene() == 1) {
           updateSensorVUMeter(vol); // Iso Sensoriruudun VU-mittari
@@ -115,6 +118,7 @@ void loop() {
              updateClockDisplay();
           } else if (getCurrentScene() == 1) {
              updateSensorLuxText(getLightLevelLux());
+             updateDustSensorText(getDustDensity());
           } else if (getCurrentScene() == 2) {
              updateInfoUptime();
           }
@@ -133,7 +137,7 @@ void loop() {
      if (getCurrentScene() == 0) {
         drawHomeScreen(getLightLevelLux());
      } else if (getCurrentScene() == 1) {
-        drawSensorScreen(getLightLevelLux(), getMicrophoneVolume(), getMQLevel());
+        drawSensorScreen(getLightLevelLux(), getMicrophoneVolume(), getMQLevel(), getDustDensity());
      } else if (getCurrentScene() == 2) {
         drawInfoScreen();
      }

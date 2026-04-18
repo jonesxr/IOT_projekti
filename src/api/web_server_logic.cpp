@@ -4,6 +4,7 @@
 #include "../sensors/bh1750_sensor.h"
 #include "../sensors/inmp441_sensor.h"
 #include "../sensors/mq_sensor.h"
+#include "../sensors/dust_sensor.h"
 #include <WiFi.h>
 #include <SD.h>
 #include <FS.h>
@@ -87,6 +88,14 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             </div>
         </div>
 
+        <div class="card sensor">
+            <div class="label">Poly (PM2.5 Sharp)</div>
+            <div class="val" id="val-dust">Ladataan...</div>
+            <div style="height: 10px; background: #0a0c14; border-radius: 5px; margin-top: 10px; overflow: hidden;">
+                <div id="dust-bar" style="height: 100%; width: 0%; background: #3cc864; transition: width 0.5s;"></div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
                 SD-kortin tiedostot 
@@ -135,7 +144,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     document.getElementById('stop-name').innerText = data.stop;
                     document.getElementById('val-lux').innerText = data.lux.toFixed(1) + ' lx';
                     document.getElementById('val-vol').innerText = data.vol;
-                    document.getElementById('val-mq').innerText = data.mq;
+                    document.getElementById('val-mq').innerText = data.mq + ' VOC Indeksi';
+                    document.getElementById('val-dust').innerText = data.dust.toFixed(1) + ' µg/m³';
                     document.getElementById('ip').innerText = data.ip;
                     document.getElementById('time').innerText = new Date().toLocaleTimeString();
 
@@ -143,6 +153,11 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     const bar = document.getElementById('mq-bar');
                     bar.style.width = mqPct + '%';
                     bar.style.background = data.mq > 2500 ? '#ff4646' : (data.mq > 1200 ? '#ffca32' : '#3cc864');
+
+                    const dustPct = Math.min(100, (data.dust / 250) * 100);
+                    const dBar = document.getElementById('dust-bar');
+                    dBar.style.width = dustPct + '%';
+                    dBar.style.background = data.dust > 75 ? '#ff4646' : (data.dust > 35 ? '#ffca32' : '#3cc864');
 
                     let html = '';
                     if (data.departures.length === 0) html = '<div class="departure">Ei lahtoja juuri nyt.</div>';
@@ -156,7 +171,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     document.getElementById('departures-list').innerHTML = html;
                 });
         }
-        setInterval(updateData, 5000);
+        setInterval(updateData, 1000);
         updateData();
         updateFileList();
 
@@ -289,6 +304,7 @@ void handleData() {
     doc["lux"] = getLightLevelLux();
     doc["vol"] = getMicrophoneVolume();
     doc["mq"] = getMQLevel();
+    doc["dust"] = getDustDensity();
     doc["ip"] = WiFi.localIP().toString();
 
     JsonArray deps = doc["departures"].to<JsonArray>();
