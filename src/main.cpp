@@ -78,7 +78,7 @@ void logDataToSD() {
     }
 
     // Formaatti: aika,lux,vol,mq,dust
-    logFile.printf("%s,%.1f,%d,%d,%.1f\\n", timeStr.c_str(), lux, vol, mq, dust);
+    logFile.printf("%s,%.1f,%d,%d,%.1f\n", timeStr.c_str(), lux, vol, mq, dust);
     logFile.close();
     Serial.println("Sensoriarvot tallennettu: /log.csv");
 }
@@ -103,6 +103,15 @@ void setup() {
       Serial.println("SD-kortin alustus epäonnistui! (Tarkista kytkentä ja CS-pinni)");
   } else {
       Serial.println("SD-kortti alustettu onnistuneesti.");
+      // Luodaan lokitiedosto välittömästi, jotta verkkosivu ei anna 404-virhettä
+      if (!SD.exists("/log.csv")) {
+          File f = SD.open("/log.csv", FILE_WRITE);
+          if (f) {
+              f.println("Time,Lux,Volume,MQ135,Dust_PM25");
+              f.close();
+              Serial.println("Luotiin uusi /log.csv tiedosto.");
+          }
+      }
   }
 
   // WiFi
@@ -123,6 +132,7 @@ void loop() {
   static unsigned long lastUpdate = 0;
   static unsigned long lastFastUpdate = 0;
   static unsigned long last1sUpdate = 0;
+  static unsigned long lastLogTime = 0;
   
   processTouch(); // Lue sipaisu
 
@@ -135,8 +145,15 @@ void loop() {
       
       if (getCurrentScene() == 1) {
           updateSensorVUMeter(vol); // Iso Sensoriruudun VU-mittari
-          updateMQBar(getMQLevel()); // Päivitä kaasupalkki
+          updateMQBar(getMQLevel());
       }
+  }
+
+  // Säännöllinen datan tallennus SD-kortille (1 minuutin välein)
+  if (millis() - lastLogTime > 60000) {
+      lastLogTime = millis();
+      // Tallennetaan aina, vaikkei kello pystyisikään hakemaan netistä aikaa
+      logDataToSD();
   }
 
   // 1 sekunnin päivitys tekstikentille (kello, uptime jne)

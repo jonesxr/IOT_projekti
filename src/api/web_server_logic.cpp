@@ -224,7 +224,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     return response.text();
                 })
                 .then(csv => {
-                    const lines = csv.trim().split('\\n');
+                    const lines = csv.trim().split('\n');
                     const limit = 200; // Rajataan 200 viimeiseen näytteeseen
                     const startIdx = Math.max(0, lines.length - limit);
                     
@@ -235,7 +235,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     // Format: time,lux,vol,mq,dust
                     for (let i = startIdx; i < lines.length; i++) {
                         const parts = lines[i].split(',');
-                        if (parts.length >= 5) {
+                        if (parts.length >= 5 && parts[0] !== 'Time') {
                             labels.push(parts[0]);
                             luxData.push(parseFloat(parts[1]));
                             dustData.push(parseFloat(parts[4]));
