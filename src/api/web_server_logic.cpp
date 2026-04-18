@@ -111,7 +111,10 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         <div class="card">
             <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
                 Anturihistoria (log.csv)
-                <button onclick="updateChart()" style="background:none; border:none; color:#508cff; cursor:pointer; font-size:0.8em;">Päivitä data</button>
+                <div>
+                    <a href="/log.csv" download="historia.csv" style="display:inline-block; background:#202845; color:#fff; border:1px solid #508cff; text-decoration:none; padding:4px 10px; border-radius:4px; font-size:0.8em; margin-right:8px; cursor:pointer;">Lataa CSV</a>
+                    <button onclick="updateChart()" style="background:none; border:none; color:#508cff; cursor:pointer; font-size:0.8em;">Päivitä data</button>
+                </div>
             </div>
             <div style="position: relative; height: 300px; width: 100%; margin-top: 10px;">
                 <canvas id="historyChart"></canvas>
