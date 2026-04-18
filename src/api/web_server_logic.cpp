@@ -18,8 +18,10 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nysse Dashboard - Remote</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0c14; color: #e0e5f0; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: auto; }
@@ -65,7 +67,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         <h1>Dashboard Remote</h1>
         
         <div class="card" id="departures-card">
-            <div class="label">Pysakki: <span id="stop-name">Ladataan...</span></div>
+            <div class="label">Pysäkki: <span id="stop-name">Ladataan...</span></div>
             <div id="departures-list"></div>
         </div>
 
@@ -75,7 +77,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                 <div class="val" id="val-lux">-- lx</div>
             </div>
             <div class="card sensor">
-                <div class="label">Aani (VU)</div>
+                <div class="label">Ääni (VU)</div>
                 <div class="val" id="val-vol">0</div>
             </div>
         </div>
@@ -89,7 +91,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         </div>
 
         <div class="card sensor">
-            <div class="label">Poly (PM2.5 Sharp)</div>
+            <div class="label">Pöly (PM2.5 Sharp)</div>
             <div class="val" id="val-dust">Ladataan...</div>
             <div style="height: 10px; background: #0a0c14; border-radius: 5px; margin-top: 10px; overflow: hidden;">
                 <div id="dust-bar" style="height: 100%; width: 0%; background: #3cc864; transition: width 0.5s;"></div>
@@ -99,10 +101,20 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         <div class="card">
             <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
                 SD-kortin tiedostot 
-                <button onclick="updateFileList()" style="background:none; border:none; color:#508cff; cursor:pointer; font-size:0.8em;">Paivita lista</button>
+                <button onclick="updateFileList()" style="background:none; border:none; color:#508cff; cursor:pointer; font-size:0.8em;">Päivitä lista</button>
             </div>
             <div id="file-list-container">
                 <div class="empty-msg">Ladataan listaa...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
+                Anturihistoria (log.csv)
+                <button onclick="updateChart()" style="background:none; border:none; color:#508cff; cursor:pointer; font-size:0.8em;">Päivitä data</button>
+            </div>
+            <div style="position: relative; height: 300px; width: 100%; margin-top: 10px;">
+                <canvas id="historyChart"></canvas>
             </div>
         </div>
 
@@ -123,7 +135,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     <div id="file-name" style="font-weight: bold; color: #fff; margin-bottom: 10px; word-break: break-all;"></div>
                     <div style="display: flex; gap: 10px;">
                         <button onclick="cancelUpload()" style="flex: 1; background: #0a0c14; color: #ff4646; border: 1px solid #ff4646; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">Peruuta</button>
-                        <button onclick="uploadFile()" id="upload-btn" style="flex: 2; background: #508cff; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">Laheta NYT</button>
+                        <button onclick="uploadFile()" id="upload-btn" style="flex: 2; background: #508cff; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">Lähetä NYT</button>
                     </div>
                 </div>
 
@@ -132,7 +144,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         </div>
 
         <div class="footer">
-            IP: <span id="ip">--</span> | Paivitetty: <span id="time">--</span>
+            IP: <span id="ip">--</span> | Päivitetty: <span id="time">--</span>
         </div>
     </div>
 
@@ -160,7 +172,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     dBar.style.background = data.dust > 75 ? '#ff4646' : (data.dust > 35 ? '#ffca32' : '#3cc864');
 
                     let html = '';
-                    if (data.departures.length === 0) html = '<div class="departure">Ei lahtoja juuri nyt.</div>';
+                    if (data.departures.length === 0) html = '<div class="departure">Ei lähtöjä juuri nyt.</div>';
                     data.departures.forEach(d => {
                         html += `<div class="departure">
                             <div class="route">${d.route}</div>
@@ -175,13 +187,74 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         updateData();
         updateFileList();
 
+        let historyChart = null;
+        
+        function initChart() {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            historyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Pöly (µg/m³)', borderColor: '#508cff', backgroundColor: 'rgba(80, 140, 255, 0.1)', data: [], yAxisID: 'y', tension: 0.3, fill: true, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Valoisuus', borderColor: '#ffca32', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { grid: { color: '#202845' }, ticks: { color: '#646e8c', maxTicksLimit: 10 } },
+                        y: { type: 'linear', display: true, position: 'left', grid: { color: '#202845' }, ticks: { color: '#646e8c' } },
+                        y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#646e8c' } }
+                    },
+                    plugins: { legend: { labels: { color: '#e0e5f0' } } }
+                }
+            });
+            updateChart();
+        }
+
+        function updateChart() {
+            fetch('/log.csv')
+                .then(response => {
+                    if (!response.ok) throw new Error('Ei lokitietoja');
+                    return response.text();
+                })
+                .then(csv => {
+                    const lines = csv.trim().split('\\n');
+                    const limit = 200; // Rajataan 200 viimeiseen näytteeseen
+                    const startIdx = Math.max(0, lines.length - limit);
+                    
+                    const labels = [];
+                    const dustData = [];
+                    const luxData = [];
+                    
+                    // Format: time,lux,vol,mq,dust
+                    for (let i = startIdx; i < lines.length; i++) {
+                        const parts = lines[i].split(',');
+                        if (parts.length >= 5) {
+                            labels.push(parts[0]);
+                            luxData.push(parseFloat(parts[1]));
+                            dustData.push(parseFloat(parts[4]));
+                        }
+                    }
+                    if (historyChart) {
+                        historyChart.data.labels = labels;
+                        historyChart.data.datasets[0].data = dustData;
+                        historyChart.data.datasets[1].data = luxData;
+                        historyChart.update();
+                    }
+                }).catch(e => console.log('Chart error:', e));
+        }
+        setTimeout(initChart, 500); // Ladataan chart vähän viiveellä
+
         function updateFileList() {
             const container = document.getElementById('file-list-container');
             fetch('/api/list')
                 .then(response => response.json())
                 .then(files => {
                     if (files.length === 0) {
-                        container.innerHTML = '<div class="empty-msg">SD-kortti on tyhja.</div>';
+                        container.innerHTML = '<div class="empty-msg">SD-kortti on tyhjä.</div>';
                         return;
                     }
                     let html = '<table><thead><tr><th>Nimi</th><th>Koko</th><th></th></tr></thead><tbody>';
@@ -206,7 +279,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             fetch('/api/delete?path=/' + name)
                 .then(response => {
                     if (response.ok) updateFileList();
-                    else alert('Poisto epaonnistui');
+                    else alert('Poisto epäonnistui');
                 });
         }
 
@@ -259,7 +332,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             const status = document.getElementById('upload-status');
             
             btn.disabled = true;
-            btn.innerText = 'Lahetetaan...';
+            btn.innerText = 'Lähetetään...';
             status.innerText = 'Valmistellaan latausta...';
             status.style.color = '#ffca32';
 
@@ -277,7 +350,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     setTimeout(cancelUpload, 2000); // Nollaa nakyma hetken kuluttua
                     updateFileList();
                 } else {
-                    throw new Error('Lataus epaonnistui');
+                    throw new Error('Lataus epäonnistui');
                 }
             })
             .catch(error => {
@@ -394,6 +467,17 @@ void initWebServer() {
     server.on("/api/data", handleData);
     server.on("/api/list", HTTP_GET, handleFileList);
     server.on("/api/delete", HTTP_GET, handleFileDelete);
+    
+    // Palvele CSV suoraan SD-kortilta
+    server.on("/log.csv", HTTP_GET, []() {
+        File file = SD.open("/log.csv", FILE_READ);
+        if (!file) {
+            server.send(404, "text/plain", "Log file not found");
+            return;
+        }
+        server.streamFile(file, "text/csv");
+        file.close();
+    });
     
     // Tiedoston lataus (POST)
     server.on("/upload", HTTP_POST, []() {

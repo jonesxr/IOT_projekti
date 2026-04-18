@@ -29,6 +29,17 @@ void resetUICaches() {
     cacheLastM = -1;
 }
 
+// Apufunktio ääkkösten (pisteiden) piirtämiseen TFT-näytöllä perusfontin vapaaseen tilaan
+void drawUmlaut(int textX, int textY, int charIndex, int size, uint16_t color) {
+    int charStartX = textX + charIndex * 6 * size;
+    // Nostetaan pisteet kirjaimen yläpuolelle (perusfontin päältä)
+    int dotY = max(0, textY - 2 * size);
+    if (dotY < 2) dotY = 2; 
+
+    // Piirretään 2 pientä neliötä A/O-kirjaimen päälle
+    gfx.fillRect(charStartX + 1 * size, dotY, size, size, color);
+    gfx.fillRect(charStartX + 3 * size, dotY, size, size, color);
+}
 
 void initColors() {
   C_BG     = gfx.color565(10,  12,  20);
@@ -142,6 +153,10 @@ void drawHomeScreen(float lux) {
     } else {
       gfx.setTextColor(C_DIM);
       gfx.setCursor(20, 200); gfx.print("Ei lahtoja");
+      // "Ei lähtöjä" pisteet: l(3)->ä(4), t(6)->ö(7), j(8)->ä(9)
+      drawUmlaut(20, 200, 4, 2, C_DIM);
+      drawUmlaut(20, 200, 7, 2, C_DIM);
+      drawUmlaut(20, 200, 9, 2, C_DIM);
     }
   }
 
@@ -187,7 +202,13 @@ void drawHomeScreen(float lux) {
   gfx.setTextColor(C_DIM); gfx.setTextSize(1);
   gfx.setCursor(8, gfx.height()-18);
   gfx.print("IP: "); gfx.print(WiFi.localIP().toString());
-  gfx.print(" | Paivitetty: "); gfx.print(lastUpdated);
+  
+  int px = gfx.getCursorX();
+  gfx.print(" | Paivitetty: "); 
+  // " | Päivitetty: ":  (0), |(1),  (2), P(3), ä(4)
+  drawUmlaut(px, gfx.height()-18, 4, 1, C_DIM);
+  
+  gfx.print(lastUpdated);
 }
 
 void updateVUMeter(int volume) {
@@ -253,13 +274,18 @@ void drawSensorScreen(float lux, int volume, int mqLevel, float dustDensity) {
   // ------ 3. Pöly-kortti (Sharp) ------
   gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-  gfx.setCursor(30, y+10); gfx.print("Poly (PM2.5)");
+  gfx.setCursor(30, y+10); 
+  gfx.print("Poly (PM2.5)");
+  drawUmlaut(30, y+10, 1, 2, C_DIM); // Pöly
   y += cardH + spacing;
   
   // ------ 4. Mikrofoni-kortti ------
   gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-  gfx.setCursor(30, y+10); gfx.print("Aani (INMP441)");
+  gfx.setCursor(30, y+10); 
+  gfx.print("Aani (INMP441)");
+  drawUmlaut(30, y+10, 0, 2, C_DIM); // Ä
+  drawUmlaut(30, y+10, 1, 2, C_DIM); // ä
 
   // Varsinaiset arvot ja palkit tulostetaan nollaamalla cachet 1. piirrossa 
   // (Päivitysruutiini loopin puolella piirtää ne HETI oikeille paikoille!)
@@ -356,16 +382,20 @@ void drawInfoScreen() {
     gfx.setCursor(40, y + 130); gfx.print(WiFi.SSID());
     
     // ------ ALAOSAN LUKEMAT ------
-    y = 320;
+    int y_bottom = 320;
     unsigned long uptimeS = millis() / 1000;
     int h = uptimeS / 3600;
     int m = (uptimeS % 3600) / 60;
     
     gfx.setTextColor(C_DIM); gfx.setTextSize(2);
-    gfx.setCursor(20, y); gfx.print("Kaynnissa:");
+    gfx.setCursor(20, y_bottom); 
+    gfx.print("Kaynnissa:");
+    drawUmlaut(20, y_bottom, 1, 2, C_DIM); // Kä
+    drawUmlaut(20, y_bottom, 8, 2, C_DIM); // sä
+    
     updateInfoUptime();
     
-    gfx.setCursor(20, y + 40);
+    gfx.setCursor(20, y_bottom + 40);
     gfx.setTextColor(C_DIM); gfx.print("Versio:");
     gfx.setTextColor(C_DIM); gfx.print(" 1.0 (ESP32-S3)");
 }

@@ -54,6 +54,35 @@ bool connectWiFi() {
   }
 }
 
+// Aika-apufunktio lokitusta varten
+String getLogTimeString() {
+    struct tm ti;
+    if (!getLocalTime(&ti)) return "00:00:00";
+    char timeBuf[12];
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", ti.tm_hour, ti.tm_min, ti.tm_sec);
+    return String(timeBuf);
+}
+
+// SD-lokitustoiminto
+void logDataToSD() {
+    float lux = getLightLevelLux();
+    int vol = getMicrophoneVolume();
+    int mq = getMQLevel();
+    float dust = getDustDensity();
+    String timeStr = getLogTimeString();
+
+    File logFile = SD.open("/log.csv", FILE_APPEND);
+    if (!logFile) {
+        Serial.println("Virhe: Ei voitu avata /log.csv tiedostoa kirjoitusta varten!");
+        return;
+    }
+
+    // Formaatti: aika,lux,vol,mq,dust
+    logFile.printf("%s,%.1f,%d,%d,%.1f\\n", timeStr.c_str(), lux, vol, mq, dust);
+    logFile.close();
+    Serial.println("Sensoriarvot tallennettu: /log.csv");
+}
+
 void setup() {
   Serial.begin(115200);
 
