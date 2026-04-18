@@ -91,6 +91,7 @@ void setup() {
 void loop() {
   static unsigned long lastUpdate = 0;
   static unsigned long lastFastUpdate = 0;
+  static unsigned long last1sUpdate = 0;
   
   processTouch(); // Lue sipaisu
 
@@ -106,14 +107,29 @@ void loop() {
       }
   }
 
-  // Näytön iso päivitys tai näkymän vaihto
-  if (isRedrawNeeded() || (millis() - lastUpdate > 10000)) {
-     // Hae Nysse data vain minuutin välein ja jos olemme Nysse-ruudulla
-     if (millis() - lastFetchMs > 60000 && getCurrentScene() == 0) {
-        lastFetchMs = millis();
-        fetchOk = fetchNysse();
-     }
-     
+  // 1 sekunnin päivitys tekstikentille (kello, uptime jne)
+  if (millis() - last1sUpdate > 1000) {
+      last1sUpdate = millis();
+      if (!isRedrawNeeded()) { // Ei päivitetä osittain jos koko ruutu piirretään kuitenkin
+          if (getCurrentScene() == 0) {
+             updateClockDisplay();
+          } else if (getCurrentScene() == 1) {
+             updateSensorLuxText(getLightLevelLux());
+          } else if (getCurrentScene() == 2) {
+             updateInfoUptime();
+          }
+      }
+  }
+
+  // Hae Nysse data vain minuutin välein ja jos olemme Nysse-ruudulla
+  if (millis() - lastFetchMs > 60000 && getCurrentScene() == 0) {
+      lastFetchMs = millis();
+      fetchOk = fetchNysse();
+      forceRedraw(); // Pakotetaan ruudun päivitys, kun uudet aikataulut on haettu
+  }
+
+  // Näytön iso päivitys tai näkymän vaihto (ei enää 10s pakotettua päivitystä)
+  if (isRedrawNeeded()) {
      if (getCurrentScene() == 0) {
         drawHomeScreen(getLightLevelLux());
      } else if (getCurrentScene() == 1) {

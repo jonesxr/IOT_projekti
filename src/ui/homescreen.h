@@ -9,4 +9,7 @@ void drawInfoScreen();
 void updateVUMeter(int volume);
 void updateSensorVUMeter(int volume);
 void updateMQBar(int mqLevel);
+void updateClockDisplay();
+void updateSensorLuxText(float lux);
+void updateInfoUptime();
 void utf8toAscii(char* dst, const char* src, int maxLen);
