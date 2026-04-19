@@ -188,6 +188,7 @@ void loop() {
   static float sumDust = 0;
   
   processTouch(); // Lue sipaisu
+  updateActivity(isMotionDetected()); // Päivitä liike/standby-tila
 
   // Anturien nopea päivitys
   if (millis() - lastFastUpdate > 50) {
@@ -234,7 +235,7 @@ void loop() {
   if (millis() - last1sUpdate > 1000) {
       last1sUpdate = millis();
       if (!isRedrawNeeded()) { // Ei päivitetä osittain jos koko ruutu piirretään kuitenkin
-          if (getCurrentScene() == 0) {
+          if (getCurrentScene() == 0 || getCurrentScene() == SCENE_STANDBY) {
              updateClockDisplay();
           } else if (getCurrentScene() == 1) {
              updateSensorLuxText(getLightLevelLux());
@@ -260,6 +261,8 @@ void loop() {
         drawSensorScreen(getLightLevelLux(), getMicrophoneVolume(), getMQLevel(), getDustDensity());
      } else if (getCurrentScene() == 2) {
         drawInfoScreen();
+     } else if (getCurrentScene() == SCENE_STANDBY) {
+        drawStandbyScreen();
      }
      
      setRedrawDone();

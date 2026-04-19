@@ -1,9 +1,13 @@
 #include "scenemanager.h"
 #include "display.h"
+#include "../config.h"
 
 int currentScene = 0;
 const int MAX_SCENES = 3; // 0 = Nysse, 1 = Sensorit, 2 = Info (IP)
 bool redrawNeeded = true;
+unsigned long lastActivityTime = 0;
+bool isStandby = false;
+int savedScene = 0;
 
 int touchStartX = -1;
 int touchStartY = -1;
@@ -14,6 +18,7 @@ bool isTouching = false;
 void initScenes() {
     currentScene = 0;
     redrawNeeded = true;
+    lastActivityTime = millis();
     
     // Alustetaan BOOT-nappi virtuaalisena näkymänvaihtajana
     pinMode(0, INPUT_PULLUP);
@@ -24,21 +29,47 @@ void forceRedraw() { redrawNeeded = true; }
 bool isRedrawNeeded() { return redrawNeeded; }
 void setRedrawDone() { redrawNeeded = false; }
 
+void wakeUp() {
+    if (isStandby) {
+        isStandby = false;
+        currentScene = savedScene;
+        redrawNeeded = true;
+        Serial.println("Standby: HERATYS!");
+    }
+    lastActivityTime = millis();
+}
+
 void nextScene() {
+    wakeUp();
     currentScene++;
     if (currentScene >= MAX_SCENES) currentScene = 0;
     redrawNeeded = true;
 }
 
 void prevScene() {
+    wakeUp();
     currentScene--;
     if (currentScene < 0) currentScene = MAX_SCENES - 1;
     redrawNeeded = true;
 }
 
+void updateActivity(bool motionDetected) {
+    if (motionDetected) {
+        wakeUp();
+    }
+
+    // Tarkistetaan timeout
+    if (!isStandby && (millis() - lastActivityTime > STANDBY_TIMEOUT)) {
+        isStandby = true;
+        savedScene = currentScene;
+        currentScene = SCENE_STANDBY;
+        redrawNeeded = true;
+        Serial.println("Standby: Aktivoitu (timeout)");
+    }
+}
+
 void processTouch() {
     // Luetaan myös ESP32:n sisäänrakennettu BOOT-nappi (GPIO 0)
-    // Se vetää signaalin LOW-tilaan kun sitä painetaan.
     static bool buttonPressed = false;
     if (digitalRead(0) == LOW) {
         if (!buttonPressed) {
@@ -53,9 +84,8 @@ void processTouch() {
     int32_t cx, cy;
     bool touched = gfx.getTouch(&cx, &cy);
     
-    // LovyanGFX voi antaa outoja arvoja 0,0 kun touch irtoaa, 
-    // joten tallennamme aina uusimman validin.
     if (touched) {
+        wakeUp(); // Kosketus herättää ja nollaa ajastimen
         if (!isTouching) {
             isTouching = true;
             touchStartX = cx;
@@ -64,27 +94,21 @@ void processTouch() {
             touchStartTime = millis();
             Serial.printf("\nKosketus alkoi X:%d Y:%d\n", cx, cy);
         } else {
-            touchLastX = cx; // Päivitetään vetämistä
+            touchLastX = cx; 
         }
     } 
     else {
         if (isTouching) {
             isTouching = false;
             int dx = touchLastX - touchStartX;
-            Serial.printf("Kosketus paattyi. Kesto: %lu ms, DX_Muutos: %d\n", (millis()-touchStartTime), dx);
             
-            // Jos veto oli nopea (alle 1,5 s)
             if (millis() - touchStartTime < 1500) {
                 if (dx > 40) {
-                    prevScene(); // Vetäisy oikealle näyttää edellisen
-                    Serial.println("Valikko: Swipe Oikealle");
+                    prevScene(); 
                 } else if (dx < -40) {
-                    nextScene(); // Vetäisy vasemmalle näyttää seuraavan
-                    Serial.println("Valikko: Swipe Vasemmalle");
+                    nextScene(); 
                 } else if (abs(dx) < 20) {
-                    // PELKKÄ NAPAUTUS VAIHTAA MYÖS NÄKYMÄÄ! Helpompi testata jos kalibrointi pielessä.
                     nextScene();
-                    Serial.println("Valikko: Napautus -> Vaihdetaan seuraavaan");
                 }
             }
         }

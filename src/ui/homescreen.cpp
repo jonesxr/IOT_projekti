@@ -471,3 +471,25 @@ void updateInfoUptime() {
         gfx.printf(" %dh %dm", h, m);
     }
 }
+
+void drawStandbyScreen() {
+    resetUICaches();
+    gfx.fillScreen(TFT_BLACK);
+    
+    struct tm ti;
+    getLocalTime(&ti);
+    char timeBuf[10];
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", ti.tm_hour, ti.tm_min);
+    
+    // Piirretään todella suuri kello keskelle
+    gfx.setTextColor(C_DIM); // Himmeä väri säästää silmiä ja paneelia
+    gfx.setTextSize(7);
+    int sw = 5 * 6 * 7; // n. 5 merkkiä * 6px * size 7 = 210px
+    gfx.setCursor((gfx.width() - sw) / 2, (gfx.height() / 2) - 25);
+    gfx.print(timeBuf);
+    
+    gfx.setTextSize(2);
+    gfx.setTextColor(gfx.color565(40, 45, 60));
+    gfx.setCursor(80, (gfx.height() / 2) + 40);
+    gfx.print("Saastotila");
+}
