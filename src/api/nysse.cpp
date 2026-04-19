@@ -46,12 +46,14 @@ bool fetchNysse() {
     Serial.printf("Nysse API virhe HTTP %d\n", code);
     if (code > 0) Serial.println(http.getString());
     http.end();
+    client.stop(); // Estää muistivuodon (mbedtls)
     return false;
   }
 
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, http.getStream());
   http.end();
+  client.stop(); // Estää muistivuodon (mbedtls)
 
   if (err) {
     snprintf(fetchError, sizeof(fetchError), "JSON virhe: %s", err.c_str());

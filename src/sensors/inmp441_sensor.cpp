@@ -43,7 +43,9 @@ int getMicrophoneVolume() {
   size_t bytes_read;
   int32_t samples[128]; // Pieni näytepuskuri nopeaan reaktioon
   
-  esp_err_t result = i2s_read(I2S_PORT, &samples, sizeof(samples), &bytes_read, portMAX_DELAY);
+  // Käytetään 100ms timeoutia portMAX_DELAY sijaan, jotta mikrofoni ei voi jäädyttää ESP32:ta 
+  // lopullisesti jos i2s-väylään tulee jokin häiriö tai se deaktivoituu odottamatta.
+  esp_err_t result = i2s_read(I2S_PORT, &samples, sizeof(samples), &bytes_read, pdMS_TO_TICKS(100));
   if (result != ESP_OK) return 0;
   
   int samples_read = bytes_read / sizeof(int32_t);

@@ -210,8 +210,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         x: { grid: { color: '#202845' }, ticks: { color: '#646e8c', maxTicksLimit: 10 } },
-                        y: { type: 'linear', display: true, position: 'left', grid: { color: '#202845' }, ticks: { color: '#646e8c' } },
-                        y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#646e8c' } }
+                        y: { type: 'linear', display: true, position: 'left', suggestedMin: 0, suggestedMax: 100, grid: { color: '#202845' }, ticks: { color: '#646e8c' } },
+                        y1: { type: 'linear', display: true, position: 'right', suggestedMin: 0, suggestedMax: 2000, grid: { drawOnChartArea: false }, ticks: { color: '#646e8c' } }
                     },
                     plugins: { legend: { labels: { color: '#e0e5f0' } } }
                 }
