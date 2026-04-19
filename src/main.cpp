@@ -88,17 +88,21 @@ String getLogTimeString() {
 }
 
 // SD-lokitustoiminto
-void logDataToSD() {
-    float lux = getLightLevelLux();
-    int vol = getMicrophoneVolume();
-    int mq = getMQLevel();
-    float dust = getDustDensity();
+void logDataToSD(float lux, int vol, int mq, float dust) {
     String timeStr = getLogTimeString();
 
+    // Tarkistetaan onko tiedosto olemassa ennen kuin avataan se
+    bool isNewFile = !SD.exists("/log.csv");
+    
     File logFile = SD.open("/log.csv", FILE_APPEND);
     if (!logFile) {
         Serial.println("Virhe: Ei voitu avata /log.csv tiedostoa kirjoitusta varten!");
         return;
+    }
+
+    // Jos tiedosto tehtiin juuri nyt vasta, kirjoitetaan CV-otsikot
+    if (isNewFile) {
+        logFile.println("Time,Lux,Volume,MQ135,Dust_PM25");
     }
 
     // Formaatti: aika,lux,vol,mq,dust
@@ -174,6 +178,13 @@ void loop() {
   static unsigned long last1sUpdate = 0;
   static unsigned long lastLogTime = 0;
   
+  // Keskiarvon laskurit SD-korttia varten
+  static uint32_t logSampleCount = 0;
+  static float sumLux = 0;
+  static uint32_t sumVol = 0;
+  static uint32_t sumMQ = 0;
+  static float sumDust = 0;
+  
   processTouch(); // Lue sipaisu
 
   // Anturien nopea päivitys
@@ -182,6 +193,13 @@ void loop() {
       int vol = getMicrophoneVolume();
       updateMQSensor(); // Päivitä kaasuluku
       updateDustSensor(); // Päivitä pölyanturi
+      
+      // Kokoa dataa keskiarvoa varten (n. 20 näytettä sekunnissa)
+      sumLux += getLightLevelLux();
+      sumVol += vol;
+      sumMQ += getMQLevel();
+      sumDust += getDustDensity();
+      logSampleCount++;
       
       if (getCurrentScene() == 1) {
           updateSensorVUMeter(vol); // Iso Sensoriruudun VU-mittari
@@ -192,8 +210,22 @@ void loop() {
   // Säännöllinen datan tallennus SD-kortille (1 minuutin välein)
   if (millis() - lastLogTime > 60000) {
       lastLogTime = millis();
+      
+      // Lasketaan minuutin tarkat keskiarvot sadoista näytteistä
+      float avgLux = logSampleCount > 0 ? (sumLux / logSampleCount) : getLightLevelLux();
+      int avgVol = logSampleCount > 0 ? (sumVol / logSampleCount) : getMicrophoneVolume();
+      int avgMQ = logSampleCount > 0 ? (sumMQ / logSampleCount) : getMQLevel();
+      float avgDust = logSampleCount > 0 ? (sumDust / logSampleCount) : getDustDensity();
+      
       // Tallennetaan aina, vaikkei kello pystyisikään hakemaan netistä aikaa
-      logDataToSD();
+      logDataToSD(avgLux, avgVol, avgMQ, avgDust);
+      
+      // Nollataan keskiarvolaskurit seuraavaa minuuttia varten
+      sumLux = 0;
+      sumVol = 0;
+      sumMQ = 0;
+      sumDust = 0;
+      logSampleCount = 0;
   }
 
   // 1 sekunnin päivitys tekstikentille (kello, uptime jne)

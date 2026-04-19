@@ -200,7 +200,9 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     labels: [],
                     datasets: [
                         { label: 'Pöly (µg/m³)', borderColor: '#508cff', backgroundColor: 'rgba(80, 140, 255, 0.1)', data: [], yAxisID: 'y', tension: 0.3, fill: true, borderWidth: 2, pointRadius: 0 },
-                        { label: 'Valoisuus', borderColor: '#ffca32', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 }
+                        { label: 'Valoisuus', borderColor: '#ffca32', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Ääni (VU)', borderColor: '#3cc864', data: [], yAxisID: 'y', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Ilmanlaatu (MQ)', borderColor: '#ff4646', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 }
                     ]
                 },
                 options: {
@@ -231,6 +233,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     const labels = [];
                     const dustData = [];
                     const luxData = [];
+                    const volData = [];
+                    const mqData = [];
                     
                     // Format: time,lux,vol,mq,dust
                     for (let i = startIdx; i < lines.length; i++) {
@@ -238,6 +242,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                         if (parts.length >= 5 && parts[0] !== 'Time') {
                             labels.push(parts[0]);
                             luxData.push(parseFloat(parts[1]));
+                            volData.push(parseFloat(parts[2]));
+                            mqData.push(parseFloat(parts[3]));
                             dustData.push(parseFloat(parts[4]));
                         }
                     }
@@ -245,6 +251,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                         historyChart.data.labels = labels;
                         historyChart.data.datasets[0].data = dustData;
                         historyChart.data.datasets[1].data = luxData;
+                        historyChart.data.datasets[2].data = volData;
+                        historyChart.data.datasets[3].data = mqData;
                         historyChart.update();
                     }
                 }).catch(e => console.log('Chart error:', e));
