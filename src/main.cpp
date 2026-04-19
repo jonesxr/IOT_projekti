@@ -20,6 +20,12 @@
 #include "ui/scenemanager.h"
 #include "api/web_server_logic.h"
 
+#include <ThreeWire.h>
+#include <RtcDS1302.h>
+
+ThreeWire myWire(RTC_DAT_PIN, RTC_CLK_PIN, RTC_RST_PIN); 
+RtcDS1302<ThreeWire> Rtc(myWire);
+
 // Alustetaan näyttö
 LGFX gfx;
 
@@ -56,11 +62,29 @@ bool connectWiFi() {
 
 // Aika-apufunktio lokitusta varten
 String getLogTimeString() {
+    // 1. Kokeillaan ensin NTP-aikaa ESP:n sisältä (jos meillä on nettiyhteys)
     struct tm ti;
-    if (!getLocalTime(&ti)) return "00:00:00";
-    char timeBuf[12];
-    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", ti.tm_hour, ti.tm_min, ti.tm_sec);
-    return String(timeBuf);
+    // getLocalTime(struct tm *info, uint32_t ms=5000) - käytetään pientä timeoutia
+    if (getLocalTime(&ti, 50)) {
+        // Hieno ominaisuus: Synkronoidaan RTC-aika tähän hätään nettiaikaan,
+        // jotta erillinen moduuli pysyy aina oikeassa ajassa, jos netti on joskus ollut päällä!
+        RtcDateTime now(ti.tm_year + 1900, ti.tm_mon + 1, ti.tm_mday, ti.tm_hour, ti.tm_min, ti.tm_sec);
+        Rtc.SetDateTime(now);
+        
+        char timeBuf[12];
+        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", ti.tm_hour, ti.tm_min, ti.tm_sec);
+        return String(timeBuf);
+    }
+    
+    // 2. Jos ei tuoretta NTP-aikaa (esim. ei nettiä asennuspaikalla), luetaan RTC
+    if (Rtc.IsDateTimeValid()) {
+        RtcDateTime now = Rtc.GetDateTime();
+        char timeBuf[12];
+        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second());
+        return String(timeBuf);
+    }
+
+    return "00:00:00";
 }
 
 // SD-lokitustoiminto
@@ -97,6 +121,22 @@ void setup() {
   initMQSensor();
   initDustSensor();
   initScenes();
+
+  // Alustetaan RTC DS1302
+  Rtc.Begin();
+  if (Rtc.GetIsWriteProtected()) {
+      Serial.println("RTC oli kirjoitussuojattu, poistetaan suojaus");
+      Rtc.SetIsWriteProtected(false);
+  }
+  if (!Rtc.GetIsRunning()) {
+      Serial.println("RTC ei pyöri, käynnistetään kello");
+      Rtc.SetIsRunning(true);
+  }
+  if (!Rtc.IsDateTimeValid()) {
+      Serial.println("VAROITUS: RTC aika ei ole validi (paristo tyhjä tai kelloa ei asetettu)!");
+  } else {
+      Serial.println("RTC käynnissä ja aika OK.");
+  }
 
   // Alustetaan SD-kortti
   if (!SD.begin(SD_CS_PIN)) {

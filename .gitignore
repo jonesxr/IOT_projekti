@@ -6,3 +6,6 @@ src/config.h
 
 # dokumentit
 *.md
+
+# Ignore downloaded CSV log files
+*.csv
