@@ -5,6 +5,7 @@
 #include "../sensors/inmp441_sensor.h"
 #include "../sensors/mq_sensor.h"
 #include "../sensors/dust_sensor.h"
+#include "../sensors/pir_sensor.h"
 #include <WiFi.h>
 #include <SD.h>
 #include <FS.h>
@@ -98,6 +99,11 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             </div>
         </div>
 
+        <div class="card sensor">
+            <div class="label">Liike (AM312)</div>
+            <div class="val" id="val-pir">Ladataan...</div>
+        </div>
+
         <div class="card">
             <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
                 SD-kortin tiedostot 
@@ -161,6 +167,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     document.getElementById('val-vol').innerText = data.vol;
                     document.getElementById('val-mq').innerText = data.mq + ' VOC Indeksi';
                     document.getElementById('val-dust').innerText = data.dust.toFixed(1) + ' µg/m³';
+                    document.getElementById('val-pir').innerText = data.pir ? 'LIIKETTA!' : 'Ei liiketta';
+                    document.getElementById('val-pir').style.color = data.pir ? '#ff4646' : '#646e8c';
                     document.getElementById('ip').innerText = data.ip;
                     document.getElementById('time').innerText = new Date().toLocaleTimeString();
 
@@ -389,6 +397,7 @@ void handleData() {
     doc["vol"] = getMicrophoneVolume();
     doc["mq"] = getMQLevel();
     doc["dust"] = getDustDensity();
+    doc["pir"] = isMotionDetected();
     doc["ip"] = WiFi.localIP().toString();
 
     JsonArray deps = doc["departures"].to<JsonArray>();

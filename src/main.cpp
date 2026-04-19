@@ -19,6 +19,7 @@
 #include "sensors/dust_sensor.h"
 #include "ui/scenemanager.h"
 #include "api/web_server_logic.h"
+#include "sensors/pir_sensor.h"
 
 #include <ThreeWire.h>
 #include <RtcDS1302.h>
@@ -124,6 +125,7 @@ void setup() {
   initMicrophone();
   initMQSensor();
   initDustSensor();
+  initPIR();
   initScenes();
 
   // Alustetaan RTC DS1302
