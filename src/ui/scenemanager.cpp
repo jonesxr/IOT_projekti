@@ -9,6 +9,11 @@ unsigned long lastActivityTime = 0;
 bool isStandby = false;
 int savedScene = 0;
 
+// PIR-debounce: signaali vaadittu yhtäjaksoisesti ennen herätystä
+static unsigned long pirFirstDetectedMs = 0;
+static bool pirActive = false;
+#define PIR_CONFIRM_MS 1500  // ms jotka PIR pitää olla päällä ennen herätystä
+
 int touchStartX = -1;
 int touchStartY = -1;
 int touchLastX = -1;
@@ -54,8 +59,21 @@ void prevScene() {
 }
 
 void updateActivity(bool motionDetected) {
+    // PIR-debounce: hyväksytään herätys vasta kun signaali on ollut
+    // yhtäjaksoisesti HIGH:ssä vähintään PIR_CONFIRM_MS millisekuntia.
+    // Tämä estää ohikiitävien häiriöpulssien aiheuttamat turhat herätykset.
     if (motionDetected) {
-        wakeUp();
+        if (!pirActive) {
+            // Ensimmäinen HIGH-lukema – aloitetaan ajanotto
+            pirActive = true;
+            pirFirstDetectedMs = millis();
+        } else if (millis() - pirFirstDetectedMs >= PIR_CONFIRM_MS) {
+            // Signaali on pysynyt HIGH:ssä tarpeeksi kauan → hyväksytään
+            wakeUp();
+        }
+    } else {
+        // Signaali tippui LOW ennen kuin vahvistusaika täyttyi → hylätään
+        pirActive = false;
     }
 
     // Tarkistetaan timeout
