@@ -119,6 +119,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                 Anturihistoria (log.csv)
                 <div>
                     <a href="/log.csv" download="historia.csv" style="display:inline-block; background:#202845; color:#fff; border:1px solid #508cff; text-decoration:none; padding:4px 10px; border-radius:4px; font-size:0.8em; margin-right:8px; cursor:pointer;">Lataa CSV</a>
+                    <button onclick="if(confirm('Tyhjennetäänkö koko historia?')) deleteFile('log.csv', true)" style="background:none; border:none; color:#ff4646; cursor:pointer; font-size:0.8em; margin-right:8px;">Tyhjennä historia</button>
                     <button onclick="updateChart()" style="background:none; border:none; color:#508cff; cursor:pointer; font-size:0.8em;">Päivitä data</button>
                 </div>
             </div>
@@ -266,6 +267,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                 }).catch(e => console.log('Chart error:', e));
         }
         setTimeout(initChart, 500); // Ladataan chart vähän viiveellä
+        setInterval(updateChart, 60000); // Päivitetään kuvaaja minuutin välein automaattisesti
 
         function updateFileList() {
             const container = document.getElementById('file-list-container');
@@ -293,11 +295,16 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                 });
         }
 
-        function deleteFile(name) {
-            if (!confirm('Haluatko varmasti poistaa tiedoston ' + name + '?')) return;
+        function deleteFile(name, skipConfirm = false) {
+            if (!skipConfirm && !confirm('Haluatko varmasti poistaa tiedoston ' + name + '?')) return;
             fetch('/api/delete?path=/' + name)
                 .then(response => {
-                    if (response.ok) updateFileList();
+                    if (response.ok) {
+                        updateFileList();
+                        if (name === 'log.csv') {
+                            setTimeout(updateChart, 500); // Päivitä tyhjä kuvaaja pienellä viiveellä
+                        }
+                    }
                     else alert('Poisto epäonnistui');
                 });
         }

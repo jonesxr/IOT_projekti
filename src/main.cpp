@@ -144,9 +144,23 @@ void setup() {
       Serial.println("RTC käynnissä ja aika OK.");
   }
 
-  // Alustetaan SD-kortti
-  if (!SD.begin(SD_CS_PIN)) {
-      Serial.println("SD-kortin alustus epäonnistui! (Tarkista kytkentä ja CS-pinni)");
+  // Alustetaan SD-kortti (Lisätty vikasietoisuutta reboot-ongelmiin)
+  pinMode(SD_CS_PIN, OUTPUT);
+  digitalWrite(SD_CS_PIN, HIGH);
+  delay(200); // Lyhyt viive sähköjen tasaantumiselle
+
+  bool sdOk = false;
+  for (int retry = 0; retry < 3; retry++) {
+      if (SD.begin(SD_CS_PIN)) {
+          sdOk = true;
+          break;
+      }
+      Serial.print("SD-kortin alustus yritys "); Serial.print(retry + 1); Serial.println(" epäonnistui...");
+      delay(500);
+  }
+
+  if (!sdOk) {
+      Serial.println("SD-kortin alustus epäonnistui lopullisesti! (Tarkista kytkentä)");
   } else {
       Serial.println("SD-kortti alustettu onnistuneesti.");
       // Luodaan lokitiedosto välittömästi, jotta verkkosivu ei anna 404-virhettä

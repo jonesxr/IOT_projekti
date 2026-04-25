@@ -9,10 +9,11 @@ unsigned long lastActivityTime = 0;
 bool isStandby = false;
 int savedScene = 0;
 
-// PIR-debounce: signaali vaadittu yhtäjaksoisesti ennen herätystä
-static unsigned long pirFirstDetectedMs = 0;
+// PIR-herätys: hyväksytään heti ensimmäinen HIGH-pulssi, mutta estetään
+// tuplaherätykset cooldown-aikaikkunalla (AM312 antaa lyhyitä pulsseja).
+static unsigned long pirLastWakeMs = 0;
 static bool pirActive = false;
-#define PIR_CONFIRM_MS 1500  // ms jotka PIR pitää olla päällä ennen herätystä
+#define PIR_COOLDOWN_MS 2000  // ms jonka sisällä uusia herätyksiä ei hyväksytä
 
 int touchStartX = -1;
 int touchStartY = -1;
@@ -59,24 +60,27 @@ void prevScene() {
 }
 
 void updateActivity(bool motionDetected) {
-    // PIR-debounce: hyväksytään herätys vasta kun signaali on ollut
-    // yhtäjaksoisesti HIGH:ssä vähintään PIR_CONFIRM_MS millisekuntia.
-    // Tämä estää ohikiitävien häiriöpulssien aiheuttamat turhat herätykset.
+    // AM312 antaa lyhyitä HIGH-pulsseja (~1-2s). Hyväksytään heti nousevan
+    // reunan (LOW→HIGH) herätys, mutta estetään tuplaherätykset cooldown-ikkunalla.
     if (motionDetected) {
         if (!pirActive) {
-            // Ensimmäinen HIGH-lukema – aloitetaan ajanotto
+            // Nouseva reuna – tarkistetaan cooldown
             pirActive = true;
-            pirFirstDetectedMs = millis();
-        } else if (millis() - pirFirstDetectedMs >= PIR_CONFIRM_MS) {
-            // Signaali on pysynyt HIGH:ssä tarpeeksi kauan → hyväksytään
-            wakeUp();
+            if (millis() - pirLastWakeMs >= PIR_COOLDOWN_MS) {
+                pirLastWakeMs = millis();
+                wakeUp();
+                Serial.println("PIR: Heratys hyvaksytty");
+            } else {
+                Serial.println("PIR: Cooldown - heratys halatty");
+            }
         }
+        // Signaali jatkuu HIGH – ei tehdä mitaan lisaa
     } else {
-        // Signaali tippui LOW ennen kuin vahvistusaika täyttyi → hylätään
+        // Signaali laski LOW – nollataan tila seuraavaa pulssia varten
         pirActive = false;
     }
 
-    // Tarkistetaan timeout
+    // Tarkistetaan standby-timeout
     if (!isStandby && (millis() - lastActivityTime > STANDBY_TIMEOUT)) {
         isStandby = true;
         savedScene = currentScene;
@@ -85,6 +89,7 @@ void updateActivity(bool motionDetected) {
         Serial.println("Standby: Aktivoitu (timeout)");
     }
 }
+
 
 void processTouch() {
     // Luetaan myös ESP32:n sisäänrakennettu BOOT-nappi (GPIO 0)
