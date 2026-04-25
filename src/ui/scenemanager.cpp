@@ -35,25 +35,25 @@ void forceRedraw() { redrawNeeded = true; }
 bool isRedrawNeeded() { return redrawNeeded; }
 void setRedrawDone() { redrawNeeded = false; }
 
-void wakeUp() {
+void wakeUp(const char* reason) {
     if (isStandby) {
         isStandby = false;
         currentScene = savedScene;
         redrawNeeded = true;
-        Serial.println("Standby: HERATYS!");
+        Serial.printf("Standby: HERATYS! Syy: %s\n", reason);
     }
     lastActivityTime = millis();
 }
 
 void nextScene() {
-    wakeUp();
+    wakeUp("Manual (Next)");
     currentScene++;
     if (currentScene >= MAX_SCENES) currentScene = 0;
     redrawNeeded = true;
 }
 
 void prevScene() {
-    wakeUp();
+    wakeUp("Manual (Prev)");
     currentScene--;
     if (currentScene < 0) currentScene = MAX_SCENES - 1;
     redrawNeeded = true;
@@ -68,7 +68,7 @@ void updateActivity(bool motionDetected) {
             pirActive = true;
             if (millis() - pirLastWakeMs >= PIR_COOLDOWN_MS) {
                 pirLastWakeMs = millis();
-                wakeUp();
+                wakeUp("PIR Motion");
                 Serial.println("PIR: Heratys hyvaksytty");
             } else {
                 Serial.println("PIR: Cooldown - heratys halatty");
@@ -108,16 +108,21 @@ void processTouch() {
     bool touched = gfx.getTouch(&cx, &cy);
     
     if (touched) {
-        wakeUp(); // Kosketus herättää ja nollaa ajastimen
+        // Suodatetaan häiriöpiikit: vaaditaan vähintään 50ms kosketus ennen herätystä
+        // tai jos ollaan jo hereillä, nollataan ajastin vain jos kosketus on vakaa.
         if (!isTouching) {
             isTouching = true;
             touchStartX = cx;
             touchStartY = cy;
             touchLastX = cx;
             touchStartTime = millis();
-            Serial.printf("\nKosketus alkoi X:%d Y:%d\n", cx, cy);
         } else {
             touchLastX = cx; 
+            
+            // Jos kosketus on kestänyt yli 50ms, se on aito kosketus eikä SPI-häiriö
+            if (millis() - touchStartTime > 50) {
+                wakeUp("Touch Screen");
+            }
         }
     } 
     else {
