@@ -425,6 +425,28 @@ void updateClockDisplay() {
   }
 }
 
+void updateStandbyClock() {
+    struct tm ti;
+    getLocalTime(&ti);
+    char timeBuf[10];
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", ti.tm_hour, ti.tm_min);
+    
+    if (strcmp(timeBuf, cacheLastTimeBuf) != 0) {
+        strcpy(cacheLastTimeBuf, timeBuf);
+        
+        int sw = 5 * 6 * 7; // n. 5 merkkiä * 6px * size 7 = 210px
+        int x = (gfx.width() - sw) / 2;
+        int y = (gfx.height() / 2) - 25;
+        
+        gfx.fillRect(x - 10, y, sw + 20, 60, TFT_BLACK); 
+        
+        gfx.setTextColor(C_DIM);
+        gfx.setTextSize(7);
+        gfx.setCursor(x, y);
+        gfx.print(timeBuf);
+    }
+}
+
 void updateSensorLuxText(float lux) {
   if (abs(lux - cacheLastLux) > 0.1f || cacheLastLux == -999.0f) {
       cacheLastLux = lux;
@@ -487,6 +509,7 @@ void drawStandbyScreen() {
     int sw = 5 * 6 * 7; // n. 5 merkkiä * 6px * size 7 = 210px
     gfx.setCursor((gfx.width() - sw) / 2, (gfx.height() / 2) - 25);
     gfx.print(timeBuf);
+    strcpy(cacheLastTimeBuf, timeBuf);
     
     gfx.setTextSize(2);
     gfx.setTextColor(gfx.color565(40, 45, 60));

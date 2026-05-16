@@ -12,6 +12,7 @@ void updateVUMeter(int volume);
 void updateSensorVUMeter(int volume);
 void updateMQBar(int mqLevel);
 void updateClockDisplay();
+void updateStandbyClock();
 void updateSensorLuxText(float lux);
 void updateDustSensorText(float dustDensity);
 void updateInfoUptime();
