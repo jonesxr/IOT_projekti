@@ -249,8 +249,10 @@ void loop() {
   if (millis() - last1sUpdate > 1000) {
       last1sUpdate = millis();
       if (!isRedrawNeeded()) { // Ei päivitetä osittain jos koko ruutu piirretään kuitenkin
-          if (getCurrentScene() == 0 || getCurrentScene() == SCENE_STANDBY) {
+          if (getCurrentScene() == 0) {
              updateClockDisplay();
+          } else if (getCurrentScene() == SCENE_STANDBY) {
+             updateStandbyClock();
           } else if (getCurrentScene() == 1) {
              updateSensorLuxText(getLightLevelLux());
              updateDustSensorText(getDustDensity());
