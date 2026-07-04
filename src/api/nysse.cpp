@@ -50,8 +50,12 @@ bool fetchNysse() {
     return false;
   }
 
+  String payload = http.getString();
+  // Serial.println("Nysse payload:");
+  // Serial.println(payload);
+
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, http.getStream());
+  DeserializationError err = deserializeJson(doc, payload);
   http.end();
   client.stop(); // Estää muistivuodon (mbedtls)
 

@@ -9,3 +9,5 @@ src/config.h
 
 # Ignore downloaded CSV log files
 *.csv
+
+compile_commands.json
