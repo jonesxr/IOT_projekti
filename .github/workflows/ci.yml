@@ -23,6 +23,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
         
+    - name: Prepare config.h
+      run: cp src/config.h.example src/config.h
+      
     - name: Build Firmware (esp32s3)
       run: pio run -e esp32s3
 
@@ -32,6 +35,9 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Prepare real config.h
+      run: cp /home/jouni/secret_config.h src/config.h
     
     - name: Build and Upload to ESP32
       run: pio run -e esp32s3 -t upload
