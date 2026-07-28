@@ -8,12 +8,14 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <SPI.h>
 #include <SD.h>
 #include "config.h"
 #include "ui/display.h"
 #include "ui/homescreen.h"
 #include "api/nysse.h"
 #include "sensors/bh1750_sensor.h"
+#include "sensors/bme_sensor.h"
 #include "sensors/inmp441_sensor.h"
 #include "sensors/mq_sensor.h"
 #include "sensors/dust_sensor.h"
@@ -72,24 +74,28 @@ String getLogTimeString() {
         RtcDateTime now(ti.tm_year + 1900, ti.tm_mon + 1, ti.tm_mday, ti.tm_hour, ti.tm_min, ti.tm_sec);
         Rtc.SetDateTime(now);
         
-        char timeBuf[12];
-        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", ti.tm_hour, ti.tm_min, ti.tm_sec);
+        char timeBuf[24];
+        snprintf(timeBuf, sizeof(timeBuf), "%04d-%02d-%02d %02d:%02d:%02d", 
+                 ti.tm_year + 1900, ti.tm_mon + 1, ti.tm_mday, 
+                 ti.tm_hour, ti.tm_min, ti.tm_sec);
         return String(timeBuf);
     }
     
     // 2. Jos ei tuoretta NTP-aikaa (esim. ei nettiä asennuspaikalla), luetaan RTC
     if (Rtc.IsDateTimeValid()) {
         RtcDateTime now = Rtc.GetDateTime();
-        char timeBuf[12];
-        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second());
+        char timeBuf[24];
+        snprintf(timeBuf, sizeof(timeBuf), "%04d-%02d-%02d %02d:%02d:%02d", 
+                 now.Year(), now.Month(), now.Day(), 
+                 now.Hour(), now.Minute(), now.Second());
         return String(timeBuf);
     }
 
-    return "00:00:00";
+    return "2000-01-01 00:00:00";
 }
 
 // SD-lokitustoiminto
-void logDataToSD(float lux, int vol, int mq, float dust) {
+void logDataToSD(float lux, int vol, int mq, float dust, float temp, float hum, float pres) {
     String timeStr = getLogTimeString();
 
     // Tarkistetaan onko tiedosto olemassa ennen kuin avataan se
@@ -103,11 +109,11 @@ void logDataToSD(float lux, int vol, int mq, float dust) {
 
     // Jos tiedosto tehtiin juuri nyt vasta, kirjoitetaan CV-otsikot
     if (isNewFile) {
-        logFile.println("Time,Lux,Volume,MQ135,Dust_PM25");
+        logFile.println("Time,Lux,Volume,MQ135,Dust_PM25,Temp_C,Humidity_RH,Pressure_hPa");
     }
 
-    // Formaatti: aika,lux,vol,mq,dust
-    logFile.printf("%s,%.1f,%d,%d,%.1f\n", timeStr.c_str(), lux, vol, mq, dust);
+    // Formaatti: aika,lux,vol,mq,dust,temp,hum,pres
+    logFile.printf("%s,%.1f,%d,%d,%.1f,%.2f,%.2f,%.2f\n", timeStr.c_str(), lux, vol, mq, dust, temp, hum, pres);
     logFile.close();
     Serial.println("Sensoriarvot tallennettu: /log.csv");
 }
@@ -122,6 +128,7 @@ void setup() {
 
   // Käynnistetään anturit
   initLightSensor();
+  initBMESensor();
   initMicrophone();
   initMQSensor();
   initDustSensor();
@@ -150,8 +157,9 @@ void setup() {
   delay(200); // Lyhyt viive sähköjen tasaantumiselle
 
   bool sdOk = false;
+  SPI.begin(); // Varmistetaan että oletus-SPI on käynnissä
   for (int retry = 0; retry < 3; retry++) {
-      if (SD.begin(SD_CS_PIN)) {
+      if (SD.begin(SD_CS_PIN, SPI, 4000000)) { // 4 MHz nopeus parantaa vakautta leipälaudalla
           sdOk = true;
           break;
       }
@@ -167,7 +175,7 @@ void setup() {
       if (!SD.exists("/log.csv")) {
           File f = SD.open("/log.csv", FILE_WRITE);
           if (f) {
-              f.println("Time,Lux,Volume,MQ135,Dust_PM25");
+              f.println("Time,Lux,Volume,MQ135,Dust_PM25,Temp_C,Humidity_RH,Pressure_hPa");
               f.close();
               Serial.println("Luotiin uusi /log.csv tiedosto.");
           }
@@ -196,10 +204,14 @@ void loop() {
   
   // Keskiarvon laskurit SD-korttia varten
   static uint32_t logSampleCount = 0;
+  static uint32_t logI2CSampleCount = 0;
   static float sumLux = 0;
   static uint32_t sumVol = 0;
   static uint32_t sumMQ = 0;
   static float sumDust = 0;
+  static float sumTemp = 0;
+  static float sumHum = 0;
+  static float sumPres = 0;
   
   processTouch(); // Lue sipaisu
   updateActivity(isMotionDetected()); // Päivitä liike/standby-tila
@@ -212,7 +224,6 @@ void loop() {
       updateDustSensor(); // Päivitä pölyanturi
       
       // Kokoa dataa keskiarvoa varten (n. 20 näytettä sekunnissa)
-      sumLux += getLightLevelLux();
       sumVol += vol;
       sumMQ += getMQLevel();
       sumDust += getDustDensity();
@@ -229,25 +240,42 @@ void loop() {
       lastLogTime = millis();
       
       // Lasketaan minuutin tarkat keskiarvot sadoista näytteistä
-      float avgLux = logSampleCount > 0 ? (sumLux / logSampleCount) : getLightLevelLux();
       int avgVol = logSampleCount > 0 ? (sumVol / logSampleCount) : getMicrophoneVolume();
       int avgMQ = logSampleCount > 0 ? (sumMQ / logSampleCount) : getMQLevel();
       float avgDust = logSampleCount > 0 ? (sumDust / logSampleCount) : getDustDensity();
       
+      float avgLux = logI2CSampleCount > 0 ? (sumLux / logI2CSampleCount) : getLightLevelLux();
+      float avgTemp = logI2CSampleCount > 0 ? (sumTemp / logI2CSampleCount) : getTemperature();
+      float avgHum = logI2CSampleCount > 0 ? (sumHum / logI2CSampleCount) : getHumidity();
+      float avgPres = logI2CSampleCount > 0 ? (sumPres / logI2CSampleCount) : getPressure();
+      
       // Tallennetaan aina, vaikkei kello pystyisikään hakemaan netistä aikaa
-      logDataToSD(avgLux, avgVol, avgMQ, avgDust);
+      logDataToSD(avgLux, avgVol, avgMQ, avgDust, avgTemp, avgHum, avgPres);
       
       // Nollataan keskiarvolaskurit seuraavaa minuuttia varten
       sumLux = 0;
       sumVol = 0;
       sumMQ = 0;
       sumDust = 0;
+      sumTemp = 0;
+      sumHum = 0;
+      sumPres = 0;
       logSampleCount = 0;
+      logI2CSampleCount = 0;
   }
 
-  // 1 sekunnin päivitys tekstikentille (kello, uptime jne)
+  // 1 sekunnin päivitys tekstikentille (kello, uptime jne) ja hitaat anturit
   if (millis() - last1sUpdate > 1000) {
       last1sUpdate = millis();
+      
+      // Hitaat I2C-anturit (Kerran sekunnissa riittää, ei tuki väylää)
+      updateBMESensor();
+      sumLux += getLightLevelLux();
+      sumTemp += getTemperature();
+      sumHum += getHumidity();
+      sumPres += getPressure();
+      logI2CSampleCount++;
+
       if (!isRedrawNeeded()) { // Ei päivitetä osittain jos koko ruutu piirretään kuitenkin
           if (getCurrentScene() == 0) {
              updateClockDisplay();
