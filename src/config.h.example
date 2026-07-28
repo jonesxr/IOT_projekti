@@ -1,19 +1,58 @@
 #pragma once
 
-// Kopioi tämä tiedosto nimellä config.h ja täytä omat tiedot
-
+// ===========================================
 // WiFi-asetukset
-#define WIFI_SSID     "SINUN_WIFI_VERKON_NIMI"
+// ===========================================
+#define WIFI_SSID     "SINUN_WIFI_NIMI"
 #define WIFI_PASSWORD "SINUN_WIFI_SALASANA"
 
-// Digitransit API-avain
-// Rekisteröi osoitteessa: https://portal-api.digitransit.fi
+// ===========================================
+// Nysse API (Digitransit / Waltti)
+// Rekisteröi avain: https://portal.digitransit.fi
+// ===========================================
 #define DIGITRANSIT_API_KEY  "SINUN_API_AVAIN_TAHAN"
 
-// Nysse-pysäkki (etsi ID: https://api.digitransit.fi/graphiql/waltti/v1)
-// Esim. Härmälänranta = "tampere:2524"
-#define NYSSE_STOP_ID   "tampere:2524"
+// ===========================================
+// Nysse-pysäkki
+// Etsi ID osoitteesta:
+//   https://api.digitransit.fi/graphiql/waltti/v1
+// Kysely: { stops(name: "Pysäkin nimi") { gtfsId name } }
+// ===========================================
+#define NYSSE_STOP_ID   "tampere:2524"   // Härmälänranta
 #define MAX_DEPARTURES  6
+
+// MQ-kaasuanturi (MQ-135)
+#define MQ_SENSOR_PIN 1
+
+// Sharp GP2Y10 -pölyanturi
+#define DUST_AOUT_PIN 3
+#define DUST_LED_PIN  8
+
 
 #define I2C_SDA_PIN 17
 #define I2C_SCL_PIN 16
+
+// I2S Pinnit Mikrofonille
+#define I2S_SCK_PIN 41
+#define I2S_WS_PIN 42
+#define I2S_SD_PIN 2
+
+// Kosketusnäyttö (HUOM! UUSI ERISTETTY KYTKENTÄ!)
+#define TOUCH_CLK_PIN   5
+#define TOUCH_MOSI_PIN  6
+#define TOUCH_MISO_PIN  7
+#define TOUCH_CS_PIN    4
+
+// SD-kortti (SPI-väylässä jaettu näytön kanssa)
+#define SD_CS_PIN      21
+
+// ===========================================
+// DS1302 RTC-moduuli
+// ===========================================
+#define RTC_CLK_PIN    38  // SCLK / CLK
+#define RTC_DAT_PIN    39  // I/O / DAT
+#define RTC_RST_PIN    40  // CE / RST
+
+// AM312 Mini PIR-sensori
+#define PIR_PIN        18
+#define STANDBY_TIMEOUT (150 * 1000) // 2,5 minuuttia ilman liikettä
