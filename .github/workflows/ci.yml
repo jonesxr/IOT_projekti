@@ -50,4 +50,4 @@ jobs:
       run: cp /home/jouni/secret_config.h src/config.h
     
     - name: Build and Upload to ESP32
-      run: pio run -e esp32s3 -t upload
+      run: python3 -m platformio run -e esp32s3 -t upload
