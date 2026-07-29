@@ -6,6 +6,7 @@
 #include "../sensors/mq_sensor.h"
 #include "../sensors/dust_sensor.h"
 #include "../sensors/pir_sensor.h"
+#include "../sensors/bme_sensor.h"
 #include <WiFi.h>
 #include <SD.h>
 #include <FS.h>
@@ -80,6 +81,18 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             <div class="card sensor">
                 <div class="label">Ääni (VU)</div>
                 <div class="val" id="val-vol">0</div>
+            </div>
+            <div class="card sensor">
+                <div class="label">Lämpötila</div>
+                <div class="val" id="val-temp">-- C</div>
+            </div>
+            <div class="card sensor">
+                <div class="label">Kosteus</div>
+                <div class="val" id="val-hum">-- %</div>
+            </div>
+            <div class="card sensor" style="grid-column: span 2;">
+                <div class="label">Ilmanpaine</div>
+                <div class="val" id="val-pres">-- hPa</div>
             </div>
         </div>
 
@@ -168,6 +181,9 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     document.getElementById('val-vol').innerText = data.vol;
                     document.getElementById('val-mq').innerText = data.mq + ' VOC Indeksi';
                     document.getElementById('val-dust').innerText = data.dust.toFixed(1) + ' µg/m³';
+                    document.getElementById('val-temp').innerText = data.temp.toFixed(1) + ' °C';
+                    document.getElementById('val-hum').innerText = data.hum.toFixed(0) + ' %';
+                    document.getElementById('val-pres').innerText = data.pres.toFixed(0) + ' hPa';
                     document.getElementById('val-pir').innerText = data.pir ? 'LIIKETTA!' : 'Ei liiketta';
                     document.getElementById('val-pir').style.color = data.pir ? '#ff4646' : '#646e8c';
                     document.getElementById('ip').innerText = data.ip;
@@ -211,7 +227,10 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                         { label: 'Pöly (µg/m³)', borderColor: '#508cff', backgroundColor: 'rgba(80, 140, 255, 0.1)', data: [], yAxisID: 'y', tension: 0.3, fill: true, borderWidth: 2, pointRadius: 0 },
                         { label: 'Valoisuus', borderColor: '#ffca32', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 },
                         { label: 'Ääni (VU)', borderColor: '#3cc864', data: [], yAxisID: 'y', tension: 0.3, borderWidth: 2, pointRadius: 0 },
-                        { label: 'Ilmanlaatu (MQ)', borderColor: '#ff4646', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 }
+                        { label: 'Ilmanlaatu (MQ)', borderColor: '#ff4646', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Lämpötila (°C)', borderColor: '#ff8c50', data: [], yAxisID: 'y', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Kosteus (%)', borderColor: '#50d2ff', data: [], yAxisID: 'y', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+                        { label: 'Ilmanpaine (hPa)', borderColor: '#c850ff', data: [], yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 0 }
                     ]
                 },
                 options: {
@@ -244,16 +263,22 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                     const luxData = [];
                     const volData = [];
                     const mqData = [];
+                    const tempData = [];
+                    const humData = [];
+                    const presData = [];
                     
-                    // Format: time,lux,vol,mq,dust
+                    // Format: time,lux,vol,mq,dust,temp,hum,pres
                     for (let i = startIdx; i < lines.length; i++) {
                         const parts = lines[i].split(',');
-                        if (parts.length >= 5 && parts[0] !== 'Time') {
+                        if (parts.length >= 8 && parts[0] !== 'Time') {
                             labels.push(parts[0]);
                             luxData.push(parseFloat(parts[1]));
                             volData.push(parseFloat(parts[2]));
                             mqData.push(parseFloat(parts[3]));
                             dustData.push(parseFloat(parts[4]));
+                            tempData.push(parseFloat(parts[5]));
+                            humData.push(parseFloat(parts[6]));
+                            presData.push(parseFloat(parts[7]));
                         }
                     }
                     if (historyChart) {
@@ -262,6 +287,9 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                         historyChart.data.datasets[1].data = luxData;
                         historyChart.data.datasets[2].data = volData;
                         historyChart.data.datasets[3].data = mqData;
+                        historyChart.data.datasets[4].data = tempData;
+                        historyChart.data.datasets[5].data = humData;
+                        historyChart.data.datasets[6].data = presData;
                         historyChart.update();
                     }
                 }).catch(e => console.log('Chart error:', e));
@@ -404,6 +432,9 @@ void handleData() {
     doc["vol"] = getMicrophoneVolume();
     doc["mq"] = getMQLevel();
     doc["dust"] = getDustDensity();
+    doc["temp"] = getTemperature();
+    doc["hum"] = getHumidity();
+    doc["pres"] = getPressure();
     doc["pir"] = isMotionDetected();
     doc["ip"] = WiFi.localIP().toString();
 
