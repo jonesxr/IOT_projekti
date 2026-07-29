@@ -1,33 +1,43 @@
 #include "bme_sensor.h"
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+#include <SparkFunBME280.h>
 #include <Wire.h>
 #include <Arduino.h>
 
-Adafruit_BME280 bme;
+BME280 bme;
 static float temperature = 0.0f;
 static float humidity = 0.0f;
 static float pressure = 0.0f;
 static bool bmeAvailable = false;
 
 void initBMESensor() {
-    // Use the already initialized Wire from BH1750, or default pins if not initialized.
-    // 0x76 is common for modules, 0x77 is adafruit default.
-    if (!bme.begin(0x76, &Wire)) {
-        if (!bme.begin(0x77, &Wire)) {
+    bme.settings.commInterface = I2C_MODE;
+    bme.settings.I2CAddress = 0x76;
+    bme.settings.runMode = 3; // Normal mode
+    bme.settings.tStandby = 0;
+    bme.settings.filter = 0;
+    bme.settings.tempOverSample = 1;
+    bme.settings.pressOverSample = 1;
+    bme.settings.humidOverSample = 1;
+
+    // delay so sensor has time to wake up (helps with clones)
+    delay(10); 
+
+    if (!bme.beginI2C(Wire)) {
+        bme.settings.I2CAddress = 0x77;
+        if (!bme.beginI2C(Wire)) {
             Serial.println("BME280 anturia ei loydy! Tarkista kytkennat.");
             return;
         }
     }
-    Serial.println("BME280 alustettu ok.");
+    Serial.println("BME280 alustettu ok (SparkFun).");
     bmeAvailable = true;
 }
 
 void updateBMESensor() {
     if (bmeAvailable) {
-        temperature = bme.readTemperature();
-        humidity = bme.readHumidity();
-        pressure = bme.readPressure() / 100.0F; // hPa
+        temperature = bme.readTempC();
+        humidity = bme.readFloatHumidity();
+        pressure = bme.readFloatPressure() / 100.0F; // Pa to hPa
     }
 }
 
