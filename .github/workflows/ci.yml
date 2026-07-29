@@ -51,5 +51,7 @@ jobs:
     
     - name: Build and Upload to ESP32
       run: |
-        export PATH=$PATH:/home/jouni/.local/bin:/home/jouni/.platformio/penv/bin
+        python3 -m venv pio-env
+        source pio-env/bin/activate
+        pip install platformio
         pio run -e esp32s3 -t upload
