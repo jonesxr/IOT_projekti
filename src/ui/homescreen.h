@@ -14,6 +14,7 @@ void updateMQBar(int mqLevel);
 void updateClockDisplay();
 void updateStandbyClock();
 void updateSensorLuxText(float lux);
+void updateSensorBMEText(float temp, float hum, float pres);
 void updateDustSensorText(float dustDensity);
 void updateInfoUptime();
 void utf8toAscii(char* dst, const char* src, int maxLen);

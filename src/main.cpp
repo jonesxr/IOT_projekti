@@ -283,6 +283,7 @@ void loop() {
              updateStandbyClock();
           } else if (getCurrentScene() == 1) {
              updateSensorLuxText(getLightLevelLux());
+             updateSensorBMEText(getTemperature(), getHumidity(), getPressure());
              updateDustSensorText(getDustDensity());
           } else if (getCurrentScene() == 2) {
              updateInfoUptime();

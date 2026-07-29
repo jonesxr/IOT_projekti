@@ -256,22 +256,28 @@ void drawSensorScreen(float lux, int volume, int mqLevel, float dustDensity) {
   gfx.setCursor(10, 15); gfx.print("SENSORIT");
 
   int y = 65;
-  int cardH = 95;
+  int cardH = 75;
   int spacing = 8;
   
   // ------ 1. Valoisuus-kortti ------
-  gfx.fillRect(20, y, gfx.width()-40, 80, C_CARD);
+  gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
   gfx.setCursor(30, y+10); gfx.print("Valoisuus");
-  y += 80 + spacing;
+  y += cardH + spacing;
 
-  // ------ 2. Ilmanlaatu-kortti (MQ-135) ------
+  // ------ 2. Ilmasto-kortti (BME280) ------
+  gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
+  gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+  gfx.setCursor(30, y+10); gfx.print("Ilmasto (BME280)");
+  y += cardH + spacing;
+
+  // ------ 3. Ilmanlaatu-kortti (MQ-135) ------
   gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
   gfx.setCursor(30, y+10); gfx.print("Kaasu (MQ-135)");
   y += cardH + spacing;
   
-  // ------ 3. Pöly-kortti (Sharp) ------
+  // ------ 4. Pöly-kortti (Sharp) ------
   gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
   gfx.setCursor(30, y+10); 
@@ -279,7 +285,7 @@ void drawSensorScreen(float lux, int volume, int mqLevel, float dustDensity) {
   drawUmlaut(30, y+10, 1, 2, C_DIM); // Pöly
   y += cardH + spacing;
   
-  // ------ 4. Mikrofoni-kortti ------
+  // ------ 5. Mikrofoni-kortti ------
   gfx.fillRect(20, y, gfx.width()-40, cardH, C_CARD);
   gfx.setTextColor(C_DIM); gfx.setTextSize(2);
   gfx.setCursor(30, y+10); 
@@ -293,7 +299,7 @@ void drawSensorScreen(float lux, int volume, int mqLevel, float dustDensity) {
 
 void updateMQBar(int mqLevel) {
   int barX = 35;
-  int barY = 190; // Uusi koordinaatti: Y=153 kortin sisällä
+  int barY = 231 + 35; // Kolmannen kortin Y=231
   int barW = gfx.width() - 70;
   int barH = 20;
   
@@ -327,7 +333,7 @@ void updateMQBar(int mqLevel) {
 void updateSensorVUMeter(int volume) {
   // Piirretään audiopalkki alimmassa kortissa
   int barX = 30;
-  int barY = 405; // Uusi sijainti alimmassa kortissa (Y = 359)
+  int barY = 397 + 35; // Viidennen kortin Y=397
   int w = 8;
   int h = 30;
   int spacing = 2;
@@ -463,8 +469,8 @@ void updateDustSensorText(float dustDensity) {
     if (abs(dustDensity - cacheLastDust) > 0.5f || cacheLastDust == -999.0f) {
         cacheLastDust = dustDensity;
         
-        int y = 256 + 35; // Kolmannen kortin teksti Y (alkaa ~256)
-        gfx.fillRect(30, y, gfx.width()-60, 35, C_CARD); // Pyyhi vanha teksti kokonaan
+        int y = 314 + 35; // Neljännen kortin Y=314
+        gfx.fillRect(30, y, gfx.width()-60, 25, C_CARD); // Pyyhi vanha teksti kokonaan (25px riittää)
         
         // Värikoodaus hiukkasten määrän mukaan (PM2.5)
         uint16_t color = C_GREEN;
@@ -515,4 +521,26 @@ void drawStandbyScreen() {
     gfx.setTextColor(gfx.color565(40, 45, 60));
     gfx.setCursor(80, (gfx.height() / 2) + 40);
     gfx.print("Saastotila");
+}
+
+static float cacheLastTemp = -999.0f;
+static float cacheLastHum = -999.0f;
+static float cacheLastPres = -999.0f;
+
+void updateSensorBMEText(float temp, float hum, float pres) {
+    if (abs(temp - cacheLastTemp) > 0.5f || abs(hum - cacheLastHum) > 1.0f || abs(pres - cacheLastPres) > 1.0f || cacheLastTemp == -999.0f) {
+        cacheLastTemp = temp;
+        cacheLastHum = hum;
+        cacheLastPres = pres;
+        
+        int y = 148 + 35; // Toisen kortin Y=148
+        gfx.fillRect(30, y, gfx.width()-60, 25, C_CARD); // Pyyhitään teksti
+        
+        gfx.setTextColor(C_GREEN); gfx.setTextSize(3);
+        gfx.setCursor(30, y); 
+        gfx.printf("%.1fC  %.0f%%  %.0f", temp, hum, pres);
+        
+        gfx.setTextColor(C_DIM); gfx.setTextSize(2);
+        gfx.print(" hPa"); // Yksikkö pienemmällä
+    }
 }
