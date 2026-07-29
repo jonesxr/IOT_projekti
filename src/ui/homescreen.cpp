@@ -536,9 +536,9 @@ void updateSensorBMEText(float temp, float hum, float pres) {
         int y = 148 + 35; // Toisen kortin Y=148
         gfx.fillRect(30, y, gfx.width()-60, 25, C_CARD); // Pyyhitään teksti
         
-        gfx.setTextColor(C_GREEN); gfx.setTextSize(3);
+        gfx.setTextColor(C_GREEN); gfx.setTextSize(2);
         gfx.setCursor(30, y); 
-        gfx.printf("%.1fC  %.0f%%  %.0f", temp, hum, pres);
+        gfx.printf("%.1f C   %.0f %%   %.0f", temp, hum, pres);
         
         gfx.setTextColor(C_DIM); gfx.setTextSize(2);
         gfx.print(" hPa"); // Yksikkö pienemmällä
