@@ -46,6 +46,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Cache PlatformIO on Raspi
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: raspi-pio-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          raspi-pio-
+
     - name: Prepare real config.h
       run: cp /home/jouni/secret_config.h src/config.h
     
