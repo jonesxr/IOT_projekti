@@ -26,7 +26,8 @@ void updateDustSensor() {
     
     delayMicroseconds(deltaTime);
     digitalWrite(DUST_LED_PIN, HIGH); // Sammuta IR-ledi (HIGH)
-    delayMicroseconds(sleepTime);
+    // Ei enää delayMicroseconds(sleepTime) (9.68ms)! LED pidetään pimeänä
+    // luontaisesti päivityssilmukan (50ms) ajan. Lukuprosessi vie nyt vain 0.32ms.
     
     // Konvertoidaan ESP32:n 12-bittinen ADC (0-4095) jännitteeksi (0-3.3V)
     float calcVoltage = voMeasured * (3.3 / 4095.0);
