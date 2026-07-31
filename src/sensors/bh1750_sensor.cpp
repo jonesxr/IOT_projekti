@@ -4,7 +4,7 @@
 #include "../config.h"
 
 BH1750 lightMeter;
-bool sensorReady = false;
+static bool sensorReady = false;
 
 bool initLightSensor() {
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);

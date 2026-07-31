@@ -2,12 +2,12 @@
 #include "display.h"
 #include "../config.h"
 
-int currentScene = 0;
-const int MAX_SCENES = 3; // 0 = Nysse, 1 = Sensorit, 2 = Info (IP)
-bool redrawNeeded = true;
-unsigned long lastActivityTime = 0;
-bool isStandby = false;
-int savedScene = 0;
+static int currentScene = 0;
+static const int MAX_SCENES = 3; // 0 = Nysse, 1 = Sensorit, 2 = Info (IP)
+static bool redrawNeeded = true;
+static unsigned long lastActivityTime = 0;
+static bool isStandby = false;
+static int savedScene = 0;
 
 // PIR-herätys: hyväksytään heti ensimmäinen HIGH-pulssi, mutta estetään
 // tuplaherätykset cooldown-aikaikkunalla (AM312 antaa lyhyitä pulsseja).

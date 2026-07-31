@@ -462,21 +462,36 @@ void handleData() {
     server.send(200, "application/json", output);
 }
 
+static const size_t MAX_UPLOAD_SIZE = 50 * 1024 * 1024; // 50 MB raja
+static bool uploadAborted = false;
+
 void handleFileUpload() {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
+        uploadAborted = false;
         String filename = upload.filename;
         if (!filename.startsWith("/")) filename = "/" + filename;
         Serial.print("Ladataan tiedostoa: "); Serial.println(filename);
         uploadFile = SD.open(filename, FILE_WRITE);
     } else if (upload.status == UPLOAD_FILE_WRITE) {
-        if (uploadFile) {
+        if (uploadFile && !uploadAborted) {
+            if (upload.totalSize + upload.currentSize > MAX_UPLOAD_SIZE) {
+                Serial.println("VIRHE: Tiedosto ylittaa 50 MB rajan!");
+                uploadFile.close();
+                uploadAborted = true;
+                return;
+            }
             uploadFile.write(upload.buf, upload.currentSize);
         }
     } else if (upload.status == UPLOAD_FILE_END) {
         if (uploadFile) {
             uploadFile.close();
-            Serial.print("Lataus valmis. Koko: "); Serial.println(upload.totalSize);
+            if (uploadAborted) {
+                SD.remove(upload.filename.c_str());
+                Serial.println("Lataus keskeytetty (liian suuri).");
+            } else {
+                Serial.print("Lataus valmis. Koko: "); Serial.println(upload.totalSize);
+            }
         }
     }
 }
@@ -512,6 +527,18 @@ void handleFileDelete() {
         return;
     }
     String path = server.arg("path");
+    
+    // Turvallisuus: Sallitaan vain juurihakemiston tiedostot, estetään hakemistojen läpikävely
+    if (path.indexOf("..") >= 0 || path.indexOf("//") >= 0) {
+        server.send(403, "text/plain", "Forbidden path");
+        return;
+    }
+    // Varmistetaan, että polku on muotoa /tiedostonimi (ei alihakemistoja)
+    if (!path.startsWith("/") || path.lastIndexOf('/') > 0) {
+        server.send(403, "text/plain", "Only root files allowed");
+        return;
+    }
+    
     Serial.print("Poistetaan tiedosto: "); Serial.println(path);
     if (SD.remove(path)) {
         server.send(200, "text/plain", "Deleted");

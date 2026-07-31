@@ -87,9 +87,9 @@ bool fetchNysse() {
 
     struct tm tinfo;
     time_t depT = (time_t)absDepSec;
-    gmtime_r(&depT, &tinfo);
+    localtime_r(&depT, &tinfo); // Käyttää configTime():ssa asetettua aikavyöhykettä
     
-    int depHour = (tinfo.tm_hour + 3) % 24;
+    int depHour = tinfo.tm_hour;
     int depMin  = tinfo.tm_min;
     snprintf(d.headsign, sizeof(d.headsign), "%02d:%02d %s",
              depHour, depMin,

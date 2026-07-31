@@ -29,6 +29,9 @@
 ThreeWire myWire(RTC_DAT_PIN, RTC_CLK_PIN, RTC_RST_PIN); 
 RtcDS1302<ThreeWire> Rtc(myWire);
 
+// SD-kortin tila (estetään turhat kirjoitusyritykset jos kortti irrotetaan)
+static bool sdAvailable = false;
+
 // Alustetaan näyttö
 LGFX gfx;
 
@@ -69,10 +72,14 @@ String getLogTimeString() {
     struct tm ti;
     // getLocalTime(struct tm *info, uint32_t ms=5000) - käytetään pientä timeoutia
     if (getLocalTime(&ti, 50)) {
-        // Hieno ominaisuus: Synkronoidaan RTC-aika tähän hätään nettiaikaan,
-        // jotta erillinen moduuli pysyy aina oikeassa ajassa, jos netti on joskus ollut päällä!
-        RtcDateTime now(ti.tm_year + 1900, ti.tm_mon + 1, ti.tm_mday, ti.tm_hour, ti.tm_min, ti.tm_sec);
-        Rtc.SetDateTime(now);
+        // Synkronoidaan RTC nettiaikaan enintään kerran tunnissa (säästää DS1302:n muistia)
+        static unsigned long lastRtcSyncMs = 0;
+        if (millis() - lastRtcSyncMs > 3600000UL) { // 1 tunti
+            lastRtcSyncMs = millis();
+            RtcDateTime now(ti.tm_year + 1900, ti.tm_mon + 1, ti.tm_mday, ti.tm_hour, ti.tm_min, ti.tm_sec);
+            Rtc.SetDateTime(now);
+            Serial.println("RTC synkronoitu NTP-aikaan.");
+        }
         
         char timeBuf[24];
         snprintf(timeBuf, sizeof(timeBuf), "%04d-%02d-%02d %02d:%02d:%02d", 
@@ -96,6 +103,8 @@ String getLogTimeString() {
 
 // SD-lokitustoiminto
 void logDataToSD(float lux, int vol, int mq, float dust, float temp, float hum, float pres) {
+    if (!sdAvailable) return; // SD-kortti ei alustunut tai irrotettu
+    
     String timeStr = getLogTimeString();
 
     // Tarkistetaan onko tiedosto olemassa ennen kuin avataan se
@@ -103,7 +112,8 @@ void logDataToSD(float lux, int vol, int mq, float dust, float temp, float hum, 
     
     File logFile = SD.open("/log.csv", FILE_APPEND);
     if (!logFile) {
-        Serial.println("Virhe: Ei voitu avata /log.csv tiedostoa kirjoitusta varten!");
+        Serial.println("Virhe: Ei voitu avata /log.csv! SD-kortti merkitaan pois kaytosta.");
+        sdAvailable = false; // Estetään turhat yritykset kunnes uudelleenkäynnistys
         return;
     }
 
@@ -170,6 +180,7 @@ void setup() {
   if (!sdOk) {
       Serial.println("SD-kortin alustus epäonnistui lopullisesti! (Tarkista kytkentä)");
   } else {
+      sdAvailable = true; // Merkitään SD käyttökelpoiseksi
       Serial.println("SD-kortti alustettu onnistuneesti.");
       // Luodaan lokitiedosto välittömästi, jotta verkkosivu ei anna 404-virhettä
       if (!SD.exists("/log.csv")) {

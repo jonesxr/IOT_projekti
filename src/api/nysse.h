@@ -1,7 +1,7 @@
 #pragma once
 #include "config.h"
 
-#define MAX_DEPARTURES 6
+// MAX_DEPARTURES on määritelty config.h-tiedostossa (vältetään tupladefine)
 
 struct Departure {
   char route[8];       // linjanumero, esim. "3"
